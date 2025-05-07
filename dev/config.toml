@@ -1,0 +1,18 @@
+[server]
+listen_addr = "0.0.0.0:9000"
+advertise_addr = "127.0.0.1:9000"
+
+[database]
+host = "127.0.0.1"
+port = 5432
+username = "postgres"
+password = "1password2"
+database_name = "poem-admin"
+
+[telemetry.logs.file]
+filter = "INFO"
+dir = "logs"
+max_files = 64
+
+[telemetry.logs.stderr]
+filter = "INFO"
