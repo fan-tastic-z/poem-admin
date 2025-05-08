@@ -27,6 +27,7 @@ logforth = { version = "0.24.0", features = [
 mea = "0.3.6"
 pin-project = "1.1.10"
 poem = "3.1.10"
+rust-embed = "8.7.1"
 serde = { version = "1.0.219", features = ["derive"] }
 shadow-rs = "1.1.1"
 sqlx = { version = "0.8.5", features = [

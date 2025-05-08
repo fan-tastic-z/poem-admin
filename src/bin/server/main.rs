@@ -1,7 +1,7 @@
 use clap::Parser;
 use error_stack::Result;
 use poem_admin::{
-    Error, start,
+    Error, cli,
     utils::{styled::styled, version::version},
 };
 
@@ -15,15 +15,16 @@ struct Command {
 impl Command {
     pub fn run(self) -> Result<(), Error> {
         match self.cmd {
-            SubCommand::Start(cmd) => cmd.run(),
+            SubCommand::Server(cmd) => cmd.run(),
+            SubCommand::InitData(cmd) => cmd.run(),
         }
     }
 }
 
 #[derive(Debug, clap::Subcommand)]
 enum SubCommand {
-    /// Start a Percas node.
-    Start(start::CommandStart),
+    Server(cli::CommandStart),
+    InitData(cli::CommandInitData),
 }
 
 fn main() -> Result<(), Error> {

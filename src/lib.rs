@@ -1,8 +1,10 @@
 use thiserror::Error;
 
+pub mod cli;
 pub mod config;
-pub mod server;
-pub mod start;
+pub mod domain;
+pub mod input;
+pub mod output;
 pub mod utils;
 
 #[derive(Debug, Error)]

@@ -1,12 +1,17 @@
-use std::{io, net::SocketAddr, time::Duration};
+use std::{io, net::SocketAddr, sync::Arc, time::Duration};
 
 use mea::{shutdown::ShutdownRecv, waitgroup::WaitGroup};
 use poem::{
-    Route,
+    Endpoint, EndpointExt, Route, get,
     listener::{Acceptor, Listener, TcpAcceptor, TcpListener},
 };
 
-use crate::utils::runtime::{self, Runtime};
+use crate::{
+    cli::ServerCtx,
+    utils::runtime::{self, Runtime},
+};
+
+use super::handlers::health::health;
 
 pub(crate) type ServerFuture<T> = runtime::JoinHandle<Result<T, io::Error>>;
 
@@ -23,11 +28,11 @@ impl ServerState {
     }
     pub async fn await_shutdown(self) {
         self.shutdown_rx_server.is_shutdown().await;
-        log::info!("insight server is shutting down");
+        log::info!("http server is shutting down");
 
         match self.server_fut.await {
-            Ok(_) => log::info!("insight server stoped"),
-            Err(err) => log::error!(err:?;"insight server failed."),
+            Ok(_) => log::info!("http server stoped"),
+            Err(err) => log::error!(err:?;"http server failed."),
         }
     }
 }
@@ -70,6 +75,7 @@ pub async fn make_acceptor_and_advertise_addr(
 pub async fn start_server(
     rt: &Runtime,
     shutdown_rx: ShutdownRecv,
+    ctx: Arc<ServerCtx>,
     acceptor: TcpAcceptor,
     advertise_addr: SocketAddr,
 ) -> Result<ServerState, io::Error> {
@@ -78,7 +84,7 @@ pub async fn start_server(
     let server_fut = {
         let wg_clone = wg.clone();
         let shutdown_clone = shutdown_rx_server.clone();
-        let route = Route::new();
+        let route = Route::new().nest("/api", api_routes()).data(ctx.clone());
         let listen_addr = acceptor.local_addr()[0].clone();
         let signal = async move {
             log::info!("server has started on [{listen_addr}]");
@@ -99,4 +105,8 @@ pub async fn start_server(
         server_fut,
         shutdown_rx_server,
     })
+}
+
+fn api_routes() -> impl Endpoint {
+    Route::new().at("/health", get(health))
 }

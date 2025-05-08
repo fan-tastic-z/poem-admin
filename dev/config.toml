@@ -5,8 +5,8 @@ advertise_addr = "127.0.0.1:9000"
 [database]
 host = "127.0.0.1"
 port = 5432
-username = "postgres"
-password = "1password2"
+username = "app"
+password = "1secret2"
 database_name = "poem-admin"
 
 [telemetry.logs.file]
