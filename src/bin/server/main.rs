@@ -1,7 +1,8 @@
 use clap::Parser;
 use error_stack::Result;
 use poem_admin::{
-    Error, cli,
+    cli,
+    errors::Error,
     utils::{styled::styled, version::version},
 };
 

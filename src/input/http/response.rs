@@ -1,6 +1,9 @@
+use error_stack::Report;
 use poem::{IntoResponse, Response, error::ResponseError, http::StatusCode, web::Json};
 use serde::Serialize;
 use std::fmt;
+
+use crate::errors::Error;
 
 #[derive(Debug, Clone)]
 pub struct ApiSuccess<T: Serialize + PartialEq + Send + Sync>(StatusCode, Json<ApiResponseBody<T>>);
@@ -62,6 +65,15 @@ pub enum ApiError {
     Unauthorized(String),
 }
 
+impl From<Report<Error>> for ApiError {
+    fn from(value: Report<Error>) -> Self {
+        match value.downcast_ref::<Error>() {
+            Some(Error::Message(msg)) => Self::InternalServerError(msg.clone()),
+            _ => Self::InternalServerError(value.to_string()),
+        }
+    }
+}
+
 impl ResponseError for ApiError {
     fn status(&self) -> StatusCode {
         match self {
@@ -91,14 +103,11 @@ impl ResponseError for ApiError {
                 ))
                 .into_response()
             }
-            UnprocessableEntity(message) => (
+            UnprocessableEntity(message) => Json(ApiResponseBody::new_error(
                 StatusCode::UNPROCESSABLE_ENTITY,
-                Json(ApiResponseBody::new_error(
-                    StatusCode::UNPROCESSABLE_ENTITY,
-                    message.to_string(),
-                )),
-            )
-                .into_response(),
+                message.to_string(),
+            ))
+            .into_response(),
         }
     }
 }
@@ -112,3 +121,5 @@ impl fmt::Display for ApiError {
         }
     }
 }
+
+impl std::error::Error for ApiError {}

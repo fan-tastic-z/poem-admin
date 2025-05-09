@@ -4,7 +4,7 @@ use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
 };
 
-use crate::{Error, config::config::Config};
+use crate::{config::config::Config, errors::Error};
 
 #[derive(Debug, Clone)]
 pub struct Db {
@@ -22,7 +22,7 @@ impl Db {
         let pool = PgPoolOptions::new()
             .connect_with(opts)
             .await
-            .change_context_lazy(|| Error("failed to connect to database".to_string()))?;
+            .change_context_lazy(|| Error::Message("failed to connect to database".to_string()))?;
         Ok(Self { pool })
     }
 }

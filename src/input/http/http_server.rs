@@ -1,4 +1,4 @@
-use std::{io, net::SocketAddr, sync::Arc, time::Duration};
+use std::{io, net::SocketAddr, time::Duration};
 
 use mea::{shutdown::ShutdownRecv, waitgroup::WaitGroup};
 use poem::{
@@ -7,11 +7,12 @@ use poem::{
 };
 
 use crate::{
-    cli::ServerCtx,
+    cli::Ctx,
+    domain::ports::SysService,
     utils::runtime::{self, Runtime},
 };
 
-use super::handlers::health::health;
+use super::handlers::{health::health, menu};
 
 pub(crate) type ServerFuture<T> = runtime::JoinHandle<Result<T, io::Error>>;
 
@@ -72,10 +73,10 @@ pub async fn make_acceptor_and_advertise_addr(
     Ok((acceptor, advertise_addr))
 }
 
-pub async fn start_server(
+pub async fn start_server<S: SysService + Send + Sync + 'static>(
     rt: &Runtime,
     shutdown_rx: ShutdownRecv,
-    ctx: Arc<ServerCtx>,
+    ctx: Ctx<S>,
     acceptor: TcpAcceptor,
     advertise_addr: SocketAddr,
 ) -> Result<ServerState, io::Error> {
@@ -84,7 +85,9 @@ pub async fn start_server(
     let server_fut = {
         let wg_clone = wg.clone();
         let shutdown_clone = shutdown_rx_server.clone();
-        let route = Route::new().nest("/api", api_routes()).data(ctx.clone());
+        let route = Route::new()
+            .nest("/api", api_routes::<S>())
+            .data(ctx.clone());
         let listen_addr = acceptor.local_addr()[0].clone();
         let signal = async move {
             log::info!("server has started on [{listen_addr}]");
@@ -107,6 +110,9 @@ pub async fn start_server(
     })
 }
 
-fn api_routes() -> impl Endpoint {
-    Route::new().at("/health", get(health))
+fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
+    Route::new().at("/health", get(health)).nest(
+        "/menus",
+        Route::new().at("", get(menu::list_menu::<S>::default())),
+    )
 }
