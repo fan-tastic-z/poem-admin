@@ -34,11 +34,14 @@ impl SysRepository for Db {
                         || Error::Message("failed to get menu name".to_string()),
                     )?;
 
-                    let parent_name = row.get::<Option<&str>, _>("parent_name")
+                    let parent_name = row
+                        .get::<Option<&str>, _>("parent_name")
                         .and_then(|name| if name.is_empty() { None } else { Some(name) })
                         .map(|name| MenuName::try_new(name))
                         .transpose()
-                        .change_context_lazy(|| Error::Message("failed to get parent menu name".to_string()))?;
+                        .change_context_lazy(|| {
+                            Error::Message("failed to get parent menu name".to_string())
+                        })?;
 
                     Ok(Menu::new(
                         row.get("id"),
