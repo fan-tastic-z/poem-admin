@@ -22,7 +22,7 @@ impl Db {
         let pool = PgPoolOptions::new()
             .connect_with(opts)
             .await
-            .change_context_lazy(|| Error::Message("failed to connect to database".to_string()))?;
+            .change_context_lazy(|| Error("failed to connect to database".to_string()))?;
         Ok(Self { pool })
     }
 }

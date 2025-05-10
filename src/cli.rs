@@ -45,7 +45,7 @@ impl CommandStart {
 }
 
 async fn run_server(server_rt: &Runtime, config: Config) -> Result<(), Error> {
-    let make_error = || Error::Message("failed to start server".to_string());
+    let make_error = || Error("failed to start server".to_string());
     let (shutdown_tx, shutdown_rx) = mea::shutdown::new_pair();
     let (acceptor, advertise_addr) = make_acceptor_and_advertise_addr(
         &config.server.listen_addr,
@@ -63,12 +63,11 @@ async fn run_server(server_rt: &Runtime, config: Config) -> Result<(), Error> {
     let server = http_server::start_server(server_rt, shutdown_rx, ctx, acceptor, advertise_addr)
         .await
         .change_context_lazy(|| {
-            Error::Message("A fatal error has occurred in server process.".to_string())
+            Error("A fatal error has occurred in server process.".to_string())
         })?;
 
-    ctrlc::set_handler(move || shutdown_tx.shutdown()).change_context_lazy(|| {
-        Error::Message("failed to setup ctrl-c signal handle".to_string())
-    })?;
+    ctrlc::set_handler(move || shutdown_tx.shutdown())
+        .change_context_lazy(|| Error("failed to setup ctrl-c signal handle".to_string()))?;
 
     server.await_shutdown().await;
     Ok(())
@@ -114,7 +113,7 @@ impl CommandInitData {
 }
 
 async fn run_init_data(config: Config) -> Result<(), Error> {
-    let make_error = || Error::Message("failed to init data".to_string());
+    let make_error = || Error("failed to init data".to_string());
     let db = Db::new(config).await.change_context_lazy(make_error)?;
     let mut tx = db.pool.begin().await.change_context_lazy(make_error)?;
 
@@ -124,10 +123,10 @@ async fn run_init_data(config: Config) -> Result<(), Error> {
     for file_path in sql_files {
         if file_path.ends_with(".sql") {
             let content = SqlFiles::get(&file_path)
-                .ok_or_else(|| Error::Message(format!("failed to read sql file: {}", file_path)))?;
+                .ok_or_else(|| Error(format!("failed to read sql file: {}", file_path)))?;
 
             let sql = std::str::from_utf8(&content.data).change_context_lazy(|| {
-                Error::Message(format!(
+                Error(format!(
                     "failed to convert sql file to string: {}",
                     file_path
                 ))
@@ -139,7 +138,7 @@ async fn run_init_data(config: Config) -> Result<(), Error> {
                     .execute(&mut *tx)
                     .await
                     .change_context_lazy(|| {
-                        Error::Message(format!("failed to execute sql: {}", file_path))
+                        Error(format!("failed to execute sql: {}", file_path))
                     })?;
             }
         }

@@ -1,6 +1,9 @@
 use crate::{domain::ports::SysRepository, errors::Error};
 
-use super::{models::menu::MenuTree, ports::SysService};
+use super::{
+    models::{menu::MenuTree, role::CreateRoleRequest},
+    ports::SysService,
+};
 use error_stack::Result;
 
 #[derive(Debug, Clone)]
@@ -26,6 +29,11 @@ where
 {
     async fn list_menu(&self) -> Result<Vec<MenuTree>, Error> {
         let res = self.repo.list_menu().await?;
+        Ok(res)
+    }
+
+    async fn create_role(&self, req: &CreateRoleRequest) -> Result<i64, Error> {
+        let res = self.repo.create_role(req).await?;
         Ok(res)
     }
 }

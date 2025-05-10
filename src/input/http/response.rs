@@ -66,11 +66,9 @@ pub enum ApiError {
 }
 
 impl From<Report<Error>> for ApiError {
-    fn from(value: Report<Error>) -> Self {
-        match value.downcast_ref::<Error>() {
-            Some(Error::Message(msg)) => Self::InternalServerError(msg.clone()),
-            _ => Self::InternalServerError(value.to_string()),
-        }
+    fn from(e: Report<Error>) -> Self {
+        log::error!("ApiError: {:#?}", e);
+        Self::InternalServerError(e.to_string())
     }
 }
 
@@ -87,14 +85,11 @@ impl ResponseError for ApiError {
         use ApiError::*;
 
         match self {
-            InternalServerError(message) => {
-                log::error!("InternalServerError: {}", message);
-                Json(ApiResponseBody::new_error(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal server error".to_string(),
-                ))
-                .into_response()
-            }
+            InternalServerError(_) => Json(ApiResponseBody::new_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            ))
+            .into_response(),
             Unauthorized(message) => {
                 log::error!("Unauthorized: {}", message);
                 Json(ApiResponseBody::new_error(

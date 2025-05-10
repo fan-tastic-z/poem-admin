@@ -1,57 +1,20 @@
 use std::collections::HashMap;
 
-use nutype::nutype;
 use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, sqlx::FromRow)]
 pub struct Menu {
     pub id: i64,
-    pub name: MenuName,
+    pub name: String,
     pub parent_id: i64,
-    pub parent_name: Option<MenuName>,
+    pub parent_name: Option<String>,
+    pub order_index: i64,
 }
-
-impl Menu {
-    pub fn new(id: i64, name: MenuName, parent_id: i64, parent_name: Option<MenuName>) -> Self {
-        Self {
-            id,
-            name,
-            parent_id,
-            parent_name,
-        }
-    }
-
-    pub fn id(&self) -> i64 {
-        self.id
-    }
-
-    pub fn name(&self) -> &MenuName {
-        &self.name
-    }
-
-    pub fn parent_id(&self) -> i64 {
-        self.parent_id
-    }
-
-    pub fn parent_name(&self) -> Option<&MenuName> {
-        self.parent_name.as_ref()
-    }
-}
-
-#[nutype(
-    sanitize(trim, lowercase),
-    validate(not_empty, len_char_min = 3, len_char_max = 10),
-    derive(
-        Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash, AsRef, Deref, Borrow, TryFrom,
-        Serialize
-    )
-)]
-pub struct MenuName(String);
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct MenuTree {
     pub id: i64,
-    pub name: MenuName,
+    pub name: String,
     pub selected: bool,
     pub partial_selected: bool,
     pub children: Vec<MenuTree>,
@@ -61,7 +24,7 @@ pub struct MenuTree {
 impl MenuTree {
     pub fn new(
         id: i64,
-        name: MenuName,
+        name: String,
         selected: bool,
         partial_selected: bool,
         children: Vec<MenuTree>,
@@ -165,27 +128,31 @@ mod tests {
         let menus = vec![
             Menu {
                 id: 1,
-                name: MenuName::try_new("111".to_string()).unwrap(),
+                name: "111".to_string(),
                 parent_id: -1,
                 parent_name: None,
+                order_index: 1,
             },
             Menu {
                 id: 2,
-                name: MenuName::try_new("222".to_string()).unwrap(),
+                name: "222".to_string(),
                 parent_id: 1,
-                parent_name: Some(MenuName::try_new("111".to_string()).unwrap()),
+                parent_name: Some("111".to_string()),
+                order_index: 2,
             },
             Menu {
                 id: 3,
-                name: MenuName::try_new("333".to_string()).unwrap(),
+                name: "333".to_string(),
                 parent_id: 2,
-                parent_name: Some(MenuName::try_new("222".to_string()).unwrap()),
+                parent_name: Some("222".to_string()),
+                order_index: 3,
             },
             Menu {
                 id: 4,
-                name: MenuName::try_new("444".to_string()).unwrap(),
+                name: "444".to_string(),
                 parent_id: 2,
-                parent_name: Some(MenuName::try_new("222".to_string()).unwrap()),
+                parent_name: Some("222".to_string()),
+                order_index: 4,
             },
         ];
         let mut sid_map = HashMap::new();

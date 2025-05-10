@@ -4,6 +4,7 @@ use mea::{shutdown::ShutdownRecv, waitgroup::WaitGroup};
 use poem::{
     Endpoint, EndpointExt, Route, get,
     listener::{Acceptor, Listener, TcpAcceptor, TcpListener},
+    post,
 };
 
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
     utils::runtime::{self, Runtime},
 };
 
-use super::handlers::{health::health, menu};
+use super::handlers::{health::health, menu, role};
 
 pub(crate) type ServerFuture<T> = runtime::JoinHandle<Result<T, io::Error>>;
 
@@ -111,8 +112,14 @@ pub async fn start_server<S: SysService + Send + Sync + 'static>(
 }
 
 fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
-    Route::new().at("/health", get(health)).nest(
-        "/menus",
-        Route::new().at("", get(menu::list_menu::<S>::default())),
-    )
+    Route::new()
+        .at("/health", get(health))
+        .nest(
+            "/menus",
+            Route::new().at("", get(menu::list_menu::<S>::default())),
+        )
+        .nest(
+            "/roles",
+            Route::new().at("", post(role::create_role::<S>::default())),
+        )
 }

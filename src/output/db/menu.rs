@@ -1,5 +1,7 @@
 use error_stack::Result;
-use sqlx::{Postgres, Transaction, postgres::PgRow};
+use sqlx::{Postgres, Transaction};
+
+use crate::domain::models::menu::Menu;
 
 use super::db::Db;
 
@@ -7,14 +9,18 @@ impl Db {
     pub async fn list_menu(
         &self,
         tx: &mut Transaction<'_, Postgres>,
-    ) -> Result<Vec<PgRow>, sqlx::Error> {
-        let rows = sqlx::query(
+    ) -> Result<Vec<Menu>, sqlx::Error> {
+        let rows = sqlx::query_as::<_, Menu>(
             r#"
         SELECT
             id,
             name,
             parent_id,
-            parent_name
+            parent_name,
+            order_index,
+            created_at,
+            updated_at,
+            deleted_at
         FROM
             menu
         ORDER BY
