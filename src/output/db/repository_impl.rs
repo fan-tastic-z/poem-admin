@@ -54,6 +54,11 @@ impl SysRepository for Db {
             .await
             .change_context_lazy(|| Error("failed to create role".to_string()))?;
 
+        // 批量保存角色菜单关系
+        self.save_role_menus(&mut tx, id, req.name.as_ref(), req.menus.as_ref())
+            .await
+            .change_context_lazy(|| Error("failed to save role menus".to_string()))?;
+
         tx.commit()
             .await
             .change_context_lazy(|| Error("failed to commit transaction".to_string()))?;

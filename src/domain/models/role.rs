@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use nutype::nutype;
 
+use super::menu::MenuName;
+
 // TODO: 信任数据库中获取的数据，并且不需要做数据字段上的new type, 只做字段的取舍
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, sqlx::FromRow)]
 pub struct Role {
@@ -22,6 +24,27 @@ pub struct CreateRoleRequest {
     pub created_by: i64,
     pub created_by_name: CreateByName,
     pub is_deleteable: bool,
+    pub menus: Vec<CreateRoleMenuRequest>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CreateRoleMenuRequest {
+    pub menu_id: i64,
+    pub menu_name: MenuName,
+}
+
+impl CreateRoleMenuRequest {
+    pub fn new(menu_id: i64, menu_name: MenuName) -> Self {
+        Self { menu_id, menu_name }
+    }
+
+    pub fn menu_id(&self) -> i64 {
+        self.menu_id
+    }
+
+    pub fn menu_name(&self) -> &MenuName {
+        &self.menu_name
+    }
 }
 
 impl CreateRoleRequest {
@@ -31,6 +54,7 @@ impl CreateRoleRequest {
         created_by: i64,
         created_by_name: CreateByName,
         is_deleteable: bool,
+        menus: Vec<CreateRoleMenuRequest>,
     ) -> Self {
         Self {
             name,
@@ -38,6 +62,7 @@ impl CreateRoleRequest {
             created_by,
             created_by_name,
             is_deleteable,
+            menus,
         }
     }
 
@@ -59,6 +84,10 @@ impl CreateRoleRequest {
 
     pub fn is_deleteable(&self) -> bool {
         self.is_deleteable
+    }
+
+    pub fn menus(&self) -> &Vec<CreateRoleMenuRequest> {
+        &self.menus
     }
 }
 

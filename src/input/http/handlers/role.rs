@@ -9,9 +9,12 @@ use thiserror::Error;
 use crate::{
     cli::Ctx,
     domain::{
-        models::role::{
-            CreateByName, CreateByNameError, CreateRoleRequest, RoleDescription,
-            RoleDescriptionError, RoleName, RoleNameError,
+        models::{
+            menu::{MenuName, MenuNameError},
+            role::{
+                CreateByName, CreateByNameError, CreateRoleMenuRequest, CreateRoleRequest,
+                RoleDescription, RoleDescriptionError, RoleName, RoleNameError,
+            },
         },
         ports::SysService,
     },
@@ -26,6 +29,13 @@ pub struct CreateRoleHttpRequestBody {
     pub created_by: i64,
     pub created_by_name: String,
     pub is_deleteable: bool,
+    pub menus: Vec<CreateRoleMenu>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CreateRoleMenu {
+    pub menu_id: i64,
+    pub menu_name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -41,6 +51,8 @@ enum ParseCreateRoleHttpRequestError {
     RoleDescription(#[from] RoleDescriptionError),
     #[error(transparent)]
     CreateByName(#[from] CreateByNameError),
+    #[error(transparent)]
+    MenuName(#[from] MenuNameError),
 }
 
 impl From<ParseCreateRoleHttpRequestError> for ApiError {
@@ -54,6 +66,9 @@ impl From<ParseCreateRoleHttpRequestError> for ApiError {
             }
             ParseCreateRoleHttpRequestError::CreateByName(e) => {
                 format!("Create by name is invalid: {}", e.to_string())
+            }
+            ParseCreateRoleHttpRequestError::MenuName(e) => {
+                format!("Menu name is invalid: {}", e.to_string())
             }
         };
         Self::UnprocessableEntity(message)
@@ -70,12 +85,23 @@ impl CreateRoleHttpRequestBody {
         let created_by = self.created_by;
         let created_by_name = CreateByName::try_new(self.created_by_name)?;
         let is_deleteable = self.is_deleteable;
+        let menus = self
+            .menus
+            .into_iter()
+            .map(|m| {
+                Ok::<_, ParseCreateRoleHttpRequestError>(CreateRoleMenuRequest::new(
+                    m.menu_id,
+                    MenuName::try_new(m.menu_name)?,
+                ))
+            })
+            .collect::<Result<Vec<_>, ParseCreateRoleHttpRequestError>>()?;
         Ok(CreateRoleRequest::new(
             name,
             description,
             created_by,
             created_by_name,
             is_deleteable,
+            menus,
         ))
     }
 }

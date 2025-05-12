@@ -1,6 +1,17 @@
 use std::collections::HashMap;
 
+use nutype::nutype;
 use serde::Serialize;
+
+#[nutype(
+    sanitize(trim, lowercase),
+    validate(len_char_min = 3, len_char_max = 20),
+    derive(
+        Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash, AsRef, Deref, Borrow, TryFrom,
+        Serialize
+    )
+)]
+pub struct MenuName(String);
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, sqlx::FromRow)]
 pub struct Menu {
