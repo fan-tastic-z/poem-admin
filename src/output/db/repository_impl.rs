@@ -5,7 +5,8 @@ use crate::{
     domain::{
         models::{
             menu::{MenuTree, children_menu_tree},
-            role::CreateRoleRequest,
+            page_utils::PageFilter,
+            role::{CreateRoleRequest, ListRoleResponseData, RoleName},
         },
         ports::SysRepository,
     },
@@ -63,5 +64,31 @@ impl SysRepository for Db {
             .await
             .change_context_lazy(|| Error("failed to commit transaction".to_string()))?;
         Ok(id)
+    }
+
+    async fn list_role(
+        &self,
+        name: Option<&RoleName>,
+        page_filter: &PageFilter,
+    ) -> Result<ListRoleResponseData, Error> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .change_context_lazy(|| Error("failed to begin transaction".to_string()))?;
+        let roles = self
+            .filter_role(&mut tx, name, page_filter)
+            .await
+            .change_context_lazy(|| Error("failed to list role".to_string()))?;
+
+        let total = self
+            .filter_role_count(&mut tx, name)
+            .await
+            .change_context_lazy(|| Error("failed to filter role count".to_string()))?;
+
+        tx.commit()
+            .await
+            .change_context_lazy(|| Error("failed to commit transaction".to_string()))?;
+        Ok(ListRoleResponseData::new(total, roles))
     }
 }

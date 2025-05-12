@@ -1,7 +1,7 @@
 use poem::{
     Result, handler,
     http::StatusCode,
-    web::{Data, Json},
+    web::{Data, Json, Query},
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -11,9 +11,11 @@ use crate::{
     domain::{
         models::{
             menu::{MenuName, MenuNameError},
+            page_utils::{PageFilter, PageNo, PageNoError, PageSize, PageSizeError},
             role::{
                 CreateByName, CreateByNameError, CreateRoleMenuRequest, CreateRoleRequest,
-                RoleDescription, RoleDescriptionError, RoleName, RoleNameError,
+                ListRoleRequest, Role, RoleDescription, RoleDescriptionError, RoleName,
+                RoleNameError,
             },
         },
         ports::SysService,
@@ -118,4 +120,105 @@ pub async fn create_role<S: SysService + Send + Sync + 'static>(
         .await
         .map_err(ApiError::from)
         .map(|id| ApiSuccess::new(StatusCode::CREATED, CreateRoleResponseData { id }))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ListRoleHttpRequestBody {
+    pub name: Option<String>,
+    pub page_no: i32,
+    pub page_size: i32,
+}
+
+impl ListRoleHttpRequestBody {
+    fn try_into_domain(self) -> Result<ListRoleRequest, ParseListRoleHttpRequestError> {
+        let name = self.name.map(|n| RoleName::try_new(n)).transpose()?;
+        let page_no = PageNo::try_new(self.page_no)?;
+        let page_size = PageSize::try_new(self.page_size)?;
+        let page_filter = PageFilter::new(page_no, page_size);
+        Ok(ListRoleRequest::new(name, page_filter))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CreateAuthorHttpRequestBody {
+    pub total: i64,
+    pub data: Vec<ListRoleHttpResponseData>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ListRoleHttpResponseData {
+    pub id: i64,
+    pub name: String,
+    pub description: Option<String>,
+    pub created_by: i64,
+    pub created_by_name: String,
+    pub is_deleteable: bool,
+}
+
+impl From<Role> for ListRoleHttpResponseData {
+    fn from(role: Role) -> Self {
+        Self {
+            id: role.id,
+            name: role.name,
+            description: Some(role.description),
+            created_by: role.created_by,
+            created_by_name: role.created_by_name,
+            is_deleteable: role.is_deleteable,
+        }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum ParseListRoleHttpRequestError {
+    #[error(transparent)]
+    RoleName(#[from] RoleNameError),
+    #[error(transparent)]
+    PageNo(#[from] PageNoError),
+    #[error(transparent)]
+    PageSize(#[from] PageSizeError),
+}
+
+impl From<ParseListRoleHttpRequestError> for ApiError {
+    fn from(e: ParseListRoleHttpRequestError) -> Self {
+        let message = match e {
+            ParseListRoleHttpRequestError::RoleName(e) => {
+                format!("Role name is invalid: {}", e.to_string())
+            }
+            ParseListRoleHttpRequestError::PageNo(e) => {
+                format!("Page no is invalid: {}", e.to_string())
+            }
+            ParseListRoleHttpRequestError::PageSize(e) => {
+                format!("Page size is invalid: {}", e.to_string())
+            }
+        };
+        Self::UnprocessableEntity(message)
+    }
+}
+
+#[handler]
+pub async fn list_role<S: SysService + Send + Sync + 'static>(
+    state: Data<&Ctx<S>>,
+    Query(body): Query<ListRoleHttpRequestBody>,
+) -> Result<ApiSuccess<CreateAuthorHttpRequestBody>, ApiError> {
+    let req = body.try_into_domain()?;
+
+    state
+        .sys_service
+        .list_role(req.name.as_ref(), &req.page_filter)
+        .await
+        .map_err(ApiError::from)
+        .map(|roles| {
+            let data: Vec<ListRoleHttpResponseData> = roles
+                .data
+                .into_iter()
+                .map(ListRoleHttpResponseData::from)
+                .collect();
+            ApiSuccess::new(
+                StatusCode::OK,
+                CreateAuthorHttpRequestBody {
+                    total: roles.total,
+                    data,
+                },
+            )
+        })
 }

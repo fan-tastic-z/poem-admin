@@ -1,7 +1,11 @@
 use crate::errors::Error;
 use std::future::Future;
 
-use super::models::{menu::MenuTree, role::CreateRoleRequest};
+use super::models::{
+    menu::MenuTree,
+    page_utils::PageFilter,
+    role::{CreateRoleRequest, ListRoleResponseData, RoleName},
+};
 use error_stack::Result;
 
 pub trait SysService: Clone + Send + Sync + 'static {
@@ -10,6 +14,11 @@ pub trait SysService: Clone + Send + Sync + 'static {
         &self,
         req: &CreateRoleRequest,
     ) -> impl Future<Output = Result<i64, Error>> + Send;
+    fn list_role(
+        &self,
+        name: Option<&RoleName>,
+        page_filter: &PageFilter,
+    ) -> impl Future<Output = Result<ListRoleResponseData, Error>> + Send;
 }
 
 pub trait SysRepository: Clone + Send + Sync + 'static {
@@ -18,4 +27,9 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
         &self,
         req: &CreateRoleRequest,
     ) -> impl Future<Output = Result<i64, Error>> + Send;
+    fn list_role(
+        &self,
+        name: Option<&RoleName>,
+        page_filter: &PageFilter,
+    ) -> impl Future<Output = Result<ListRoleResponseData, Error>> + Send;
 }

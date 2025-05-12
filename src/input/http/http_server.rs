@@ -120,6 +120,9 @@ fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
         )
         .nest(
             "/roles",
-            Route::new().at("", post(role::create_role::<S>::default())),
+            Route::new().at(
+                "",
+                post(role::create_role::<S>::default()).get(role::list_role::<S>::default()),
+            ),
         )
 }

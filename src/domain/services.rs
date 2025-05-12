@@ -1,7 +1,11 @@
 use crate::{domain::ports::SysRepository, errors::Error};
 
 use super::{
-    models::{menu::MenuTree, role::CreateRoleRequest},
+    models::{
+        menu::MenuTree,
+        page_utils::PageFilter,
+        role::{CreateRoleRequest, ListRoleResponseData, RoleName},
+    },
     ports::SysService,
 };
 use error_stack::Result;
@@ -34,6 +38,15 @@ where
 
     async fn create_role(&self, req: &CreateRoleRequest) -> Result<i64, Error> {
         let res = self.repo.create_role(req).await?;
+        Ok(res)
+    }
+
+    async fn list_role(
+        &self,
+        name: Option<&RoleName>,
+        page_filter: &PageFilter,
+    ) -> Result<ListRoleResponseData, Error> {
+        let res = self.repo.list_role(name, page_filter).await?;
         Ok(res)
     }
 }
