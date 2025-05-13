@@ -1,5 +1,10 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-#[error("{0}")]
-pub struct Error(pub String);
+pub enum Error {
+    #[error("{0}")]
+    Message(String),
+
+    #[error("{0}")]
+    BadRequest(String),
+}

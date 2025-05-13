@@ -3,6 +3,7 @@ use std::future::Future;
 
 use super::models::{
     menu::MenuTree,
+    organization::CreateOrganizationRequest,
     page_utils::PageFilter,
     role::{CreateRoleRequest, ListRoleResponseData, RoleName},
 };
@@ -19,6 +20,11 @@ pub trait SysService: Clone + Send + Sync + 'static {
         name: Option<&RoleName>,
         page_filter: &PageFilter,
     ) -> impl Future<Output = Result<ListRoleResponseData, Error>> + Send;
+
+    fn create_organization(
+        &self,
+        req: &CreateOrganizationRequest,
+    ) -> impl Future<Output = Result<i64, Error>> + Send;
 }
 
 pub trait SysRepository: Clone + Send + Sync + 'static {
@@ -32,4 +38,9 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
         name: Option<&RoleName>,
         page_filter: &PageFilter,
     ) -> impl Future<Output = Result<ListRoleResponseData, Error>> + Send;
+
+    fn create_organization(
+        &self,
+        req: &CreateOrganizationRequest,
+    ) -> impl Future<Output = Result<i64, Error>> + Send;
 }

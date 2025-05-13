@@ -14,14 +14,14 @@ pub struct LoadConfigResult {
 
 pub fn load_config(config_file: PathBuf) -> Result<LoadConfigResult, Error> {
     let content = std::fs::read_to_string(&config_file).change_context_lazy(|| {
-        Error(format!(
+        Error::Message(format!(
             "failed to read config file: {}",
             config_file.display()
         ))
     })?;
 
     let mut config = DocumentMut::from_str(&content)
-        .change_context_lazy(|| Error("failed to parse config file".to_string()))?;
+        .change_context_lazy(|| Error::Message("failed to parse config file".to_string()))?;
 
     let env = std::env::vars()
         .filter(|(key, _)| key.starts_with("POEM_ADMIN_CONFIG_"))
@@ -53,7 +53,7 @@ pub fn load_config(config_file: PathBuf) -> Result<LoadConfigResult, Error> {
     let mut warnings = vec![];
     for (k, v) in env {
         let Some(ent) = known_option_entries.iter().find(|e| e.env_name == k) else {
-            bail!(Error(format!(
+            bail!(Error::Message(format!(
                 "failed to parse unknown environment variable {k} with value {v}"
             )))
         };
@@ -66,7 +66,7 @@ pub fn load_config(config_file: PathBuf) -> Result<LoadConfigResult, Error> {
             "integer" => {
                 let path = ent.ent_path;
                 let value = v.parse::<i64>().change_context_lazy(|| {
-                    Error(format!("failed to parse integer value {v} of key {k}"))
+                    Error::Message(format!("failed to parse integer value {v} of key {k}"))
                 })?;
                 let value = toml_edit::value(value);
                 (path, value)
@@ -74,13 +74,13 @@ pub fn load_config(config_file: PathBuf) -> Result<LoadConfigResult, Error> {
             "boolean" => {
                 let path = ent.ent_path;
                 let value = v.parse::<bool>().change_context_lazy(|| {
-                    Error(format!("failed to parse boolean value {v} of key {k}"))
+                    Error::Message(format!("failed to parse boolean value {v} of key {k}"))
                 })?;
                 let value = toml_edit::value(value);
                 (path, value)
             }
             ty => {
-                bail!(Error(format!(
+                bail!(Error::Message(format!(
                     "failed to parse environment variable {k} with value {v} and resolved type {ty}"
                 )))
             }
@@ -90,7 +90,7 @@ pub fn load_config(config_file: PathBuf) -> Result<LoadConfigResult, Error> {
     }
 
     let config = Config::deserialize(config.into_deserializer())
-        .change_context_lazy(|| Error("failed to deserialize config".to_string()))?;
+        .change_context_lazy(|| Error::Message("failed to deserialize config".to_string()))?;
     Ok(LoadConfigResult { config, warnings })
 }
 

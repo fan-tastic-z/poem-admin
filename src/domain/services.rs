@@ -3,6 +3,7 @@ use crate::{domain::ports::SysRepository, errors::Error};
 use super::{
     models::{
         menu::MenuTree,
+        organization::CreateOrganizationRequest,
         page_utils::PageFilter,
         role::{CreateRoleRequest, ListRoleResponseData, RoleName},
     },
@@ -47,6 +48,11 @@ where
         page_filter: &PageFilter,
     ) -> Result<ListRoleResponseData, Error> {
         let res = self.repo.list_role(name, page_filter).await?;
+        Ok(res)
+    }
+
+    async fn create_organization(&self, req: &CreateOrganizationRequest) -> Result<i64, Error> {
+        let res = self.repo.create_organization(req).await?;
         Ok(res)
     }
 }

@@ -13,7 +13,7 @@ use crate::{
     utils::runtime::{self, Runtime},
 };
 
-use super::handlers::{health::health, menu, role};
+use super::handlers::{health::health, menu, organization, role};
 
 pub(crate) type ServerFuture<T> = runtime::JoinHandle<Result<T, io::Error>>;
 
@@ -124,5 +124,9 @@ fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
                 "",
                 post(role::create_role::<S>::default()).get(role::list_role::<S>::default()),
             ),
+        )
+        .nest(
+            "/organizations",
+            Route::new().at("", post(organization::create_organization::<S>::default())),
         )
 }

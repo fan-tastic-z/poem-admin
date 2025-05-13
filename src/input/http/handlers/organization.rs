@@ -1,0 +1,76 @@
+use poem::{
+    handler,
+    http::StatusCode,
+    web::{Data, Json},
+};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+use crate::{
+    cli::Ctx,
+    domain::{
+        models::organization::{
+            CreateOrganizationRequest, OrganizationName, OrganizationNameError,
+        },
+        ports::SysService,
+    },
+    input::http::response::{ApiError, ApiSuccess},
+};
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CreateOrganizationHttpRequestBody {
+    pub name: String,
+    pub parent_id: i64,
+    pub parent_name: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CreaterganizationResponseData {
+    pub id: i64,
+}
+
+#[derive(Debug, Clone, Error)]
+pub enum ParseCreateOrganizationHttpRequestBodyError {
+    #[error(transparent)]
+    Name(#[from] OrganizationNameError),
+}
+
+impl From<ParseCreateOrganizationHttpRequestBodyError> for ApiError {
+    fn from(e: ParseCreateOrganizationHttpRequestBodyError) -> Self {
+        let message = match e {
+            ParseCreateOrganizationHttpRequestBodyError::Name(e) => {
+                format!("Name is invalid: {}", e.to_string())
+            }
+        };
+        Self::UnprocessableEntity(message)
+    }
+}
+
+impl CreateOrganizationHttpRequestBody {
+    pub fn try_into_domain(
+        self,
+    ) -> Result<CreateOrganizationRequest, ParseCreateOrganizationHttpRequestBodyError> {
+        let name = OrganizationName::try_new(self.name)?;
+        let parent_id = self.parent_id;
+        let parent_name = self
+            .parent_name
+            .map(OrganizationName::try_new)
+            .transpose()?;
+        Ok(CreateOrganizationRequest::new(name, parent_id, parent_name))
+    }
+}
+
+#[handler]
+pub async fn create_organization<S: SysService + Send + Sync + 'static>(
+    state: Data<&Ctx<S>>,
+    Json(body): Json<CreateOrganizationHttpRequestBody>,
+) -> Result<ApiSuccess<CreaterganizationResponseData>, ApiError> {
+    let request = body.try_into_domain()?;
+
+    state
+        .sys_service
+        .create_organization(&request)
+        .await
+        .map_err(ApiError::from)
+        .map(|id| ApiSuccess::new(StatusCode::CREATED, CreaterganizationResponseData { id }))
+}

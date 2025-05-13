@@ -32,7 +32,7 @@ impl Db {
             .build()
             .fetch_one(tx.as_mut())
             .await
-            .change_context_lazy(|| Error("failed to filter role count".to_string()))?;
+            .change_context_lazy(|| Error::Message("failed to filter role count".to_string()))?;
         Ok(count.get::<i64, _>("count"))
     }
 
@@ -78,7 +78,7 @@ impl Db {
             .try_map(|row| Role::from_row(&row))
             .fetch_all(tx.as_mut())
             .await
-            .change_context_lazy(|| Error("failed to filter roles".to_string()))?;
+            .change_context_lazy(|| Error::Message("failed to filter roles".to_string()))?;
 
         Ok(roles)
     }
@@ -108,7 +108,7 @@ impl Db {
         .bind(name)
         .fetch_optional(tx.as_mut())
         .await
-        .change_context_lazy(|| Error("failed to fetch role by name".to_string()))?;
+        .change_context_lazy(|| Error::Message("failed to fetch role by name".to_string()))?;
         Ok(res)
     }
 
@@ -134,7 +134,7 @@ impl Db {
         .bind(req.is_deleteable())
         .fetch_one(tx.as_mut())
         .await
-        .change_context_lazy(|| Error("failed to save role".to_string()))?;
+        .change_context_lazy(|| Error::Message("failed to save role".to_string()))?;
         let id = res.get::<i64, _>("id");
         Ok(id)
     }

@@ -63,12 +63,16 @@ pub enum ApiError {
     InternalServerError(String),
     UnprocessableEntity(String),
     Unauthorized(String),
+    BadRequest(String),
 }
 
 impl From<Report<Error>> for ApiError {
     fn from(e: Report<Error>) -> Self {
         log::error!("ApiError: {:#?}", e);
-        Self::InternalServerError(e.to_string())
+        match e.downcast_ref::<Error>() {
+            Some(Error::BadRequest(message)) => Self::BadRequest(message.clone()),
+            _ => Self::InternalServerError(e.to_string()),
+        }
     }
 }
 
@@ -78,6 +82,7 @@ impl ResponseError for ApiError {
             Self::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::UnprocessableEntity(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+            Self::BadRequest(_) => StatusCode::BAD_REQUEST,
         }
     }
 
@@ -103,6 +108,11 @@ impl ResponseError for ApiError {
                 message.to_string(),
             ))
             .into_response(),
+            BadRequest(message) => Json(ApiResponseBody::new_error(
+                StatusCode::BAD_REQUEST,
+                message.to_string(),
+            ))
+            .into_response(),
         }
     }
 }
@@ -113,6 +123,7 @@ impl fmt::Display for ApiError {
             Self::InternalServerError(msg) => write!(f, "Internal server error: {}", msg),
             Self::UnprocessableEntity(msg) => write!(f, "Unprocessable entity: {}", msg),
             Self::Unauthorized(msg) => write!(f, "Unauthorized: {}", msg),
+            Self::BadRequest(msg) => write!(f, "Bad request: {}", msg),
         }
     }
 }

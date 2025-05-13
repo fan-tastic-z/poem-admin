@@ -1,12 +1,10 @@
 -- Add migration script here
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS account (
     id BIGSERIAL PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL DEFAULT '',
     password TEXT NOT NULL DEFAULT '',
     phone TEXT NOT NULL DEFAULT '',
-    start_time TIMESTAMPTZ NOT NULL,
-    end_time TIMESTAMPTZ NOT NULL,
     remark TEXT NOT NULL DEFAULT '',
     last_login_time TIMESTAMPTZ NOT NULL,
     is_deleteable BOOLEAN NOT NULL DEFAULT FALSE,
