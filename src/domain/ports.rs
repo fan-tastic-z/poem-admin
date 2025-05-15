@@ -2,8 +2,10 @@ use crate::errors::Error;
 use std::future::Future;
 
 use super::models::{
+    account::{Account, CreateAccountRequest},
+    auth::LoginRequest,
     menu::MenuTree,
-    organization::CreateOrganizationRequest,
+    organization::{CreateOrganizationRequest, OrganizationLimitType},
     page_utils::PageFilter,
     role::{CreateRoleRequest, ListRoleResponseData, RoleName},
 };
@@ -25,6 +27,13 @@ pub trait SysService: Clone + Send + Sync + 'static {
         &self,
         req: &CreateOrganizationRequest,
     ) -> impl Future<Output = Result<i64, Error>> + Send;
+
+    fn create_account(
+        &self,
+        req: &CreateAccountRequest,
+    ) -> impl Future<Output = Result<i64, Error>> + Send;
+
+    fn login(&self, req: &LoginRequest) -> impl Future<Output = Result<Account, Error>> + Send;
 }
 
 pub trait SysRepository: Clone + Send + Sync + 'static {
@@ -43,4 +52,18 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
         &self,
         req: &CreateOrganizationRequest,
     ) -> impl Future<Output = Result<i64, Error>> + Send;
+
+    fn create_account(
+        &self,
+        req: &CreateAccountRequest,
+    ) -> impl Future<Output = Result<i64, Error>> + Send;
+
+    fn list_origanization_by_id(
+        &self,
+        id: i64,
+        is_admin: bool,
+        limit_type: OrganizationLimitType,
+    ) -> impl Future<Output = Result<Vec<i64>, Error>> + Send;
+
+    fn login(&self, req: &LoginRequest) -> impl Future<Output = Result<Account, Error>> + Send;
 }

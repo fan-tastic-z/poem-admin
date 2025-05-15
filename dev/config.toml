@@ -2,6 +2,10 @@
 listen_addr = "0.0.0.0:9000"
 advertise_addr = "127.0.0.1:9000"
 
+[auth.jwt]
+secret = "LSJ74YUWkzGheiWMRxcH" # for development
+expiration = 604800             # 7 days
+
 [database]
 host = "127.0.0.1"
 port = 5432

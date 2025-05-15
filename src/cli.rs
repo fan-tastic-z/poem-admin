@@ -1,13 +1,19 @@
 use std::{path::PathBuf, sync::Arc};
 
 use crate::{
+    auth::auth::JWT,
     config::config::{Config, LoadConfigResult, load_config},
-    domain::{ports::SysService, services::Service},
+    domain::{
+        models::account::{AccountName, AccountPassword},
+        ports::SysService,
+        services::Service,
+    },
     errors::Error,
     input::http::http_server::{self, make_acceptor_and_advertise_addr},
     output::db::db::Db,
     utils::{
         num_cpus,
+        password_hash::compute_password_hash,
         runtime::{Runtime, make_runtime},
         telemetry,
     },
@@ -19,6 +25,8 @@ use rust_embed::RustEmbed;
 #[derive(Clone)]
 pub struct Ctx<S: SysService + Send + Sync + 'static> {
     pub sys_service: Arc<S>,
+    pub jwt: Arc<JWT>,
+    pub config: Arc<Config>,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -53,11 +61,14 @@ async fn run_server(server_rt: &Runtime, config: Config) -> Result<(), Error> {
     )
     .await
     .change_context_lazy(make_error)?;
-
-    let db = Db::new(config).await.change_context_lazy(make_error)?;
+    let jwt = JWT::new(&config.auth.jwt.secret);
+    let db = Db::new(&config).await.change_context_lazy(make_error)?;
     let sys_service = Service::new(db);
+
     let ctx = Ctx {
         sys_service: Arc::new(sys_service),
+        jwt: Arc::new(jwt),
+        config: Arc::new(config),
     };
 
     let server = http_server::start_server(server_rt, shutdown_rx, ctx, acceptor, advertise_addr)
@@ -115,7 +126,7 @@ impl CommandInitData {
 
 async fn run_init_data(config: Config) -> Result<(), Error> {
     let make_error = || Error::Message("failed to init data".to_string());
-    let db = Db::new(config).await.change_context_lazy(make_error)?;
+    let db = Db::new(&config).await.change_context_lazy(make_error)?;
     let mut tx = db.pool.begin().await.change_context_lazy(make_error)?;
 
     let mut sql_files: Vec<_> = SqlFiles::iter().collect();
@@ -146,5 +157,46 @@ async fn run_init_data(config: Config) -> Result<(), Error> {
     }
     tx.commit().await.change_context_lazy(make_error)?;
     log::info!("init data success");
+    Ok(())
+}
+
+#[derive(Debug, clap::Parser)]
+pub struct CreateSuperUser {
+    #[clap(short, long, help = "Path to config file", value_hint = ValueHint::FilePath)]
+    config_file: PathBuf,
+    #[clap(short, long, help = "Password")]
+    password: String,
+}
+
+impl CreateSuperUser {
+    pub fn run(self) -> Result<(), Error> {
+        error_stack::Report::set_color_mode(error_stack::fmt::ColorMode::None);
+        let LoadConfigResult { config, warnings } = load_config(self.config_file)?;
+        let telemetry_runtime = make_telemetry_runtime();
+        let mut drop_guards =
+            telemetry::init(&telemetry_runtime, "init-data", config.telemetry.clone());
+        drop_guards.push(Box::new(telemetry_runtime));
+        for warning in warnings {
+            log::warn!("{warning}");
+        }
+        let init_data_runtime = make_init_data_runtime();
+        init_data_runtime.block_on(run_create_super_user(config, self.password))
+    }
+}
+
+async fn run_create_super_user(config: Config, password: String) -> Result<(), Error> {
+    let make_error = || Error::Message("failed to create super user".to_string());
+    let password_hash = compute_password_hash(&password).change_context_lazy(make_error)?;
+    let db = Db::new(&config).await.change_context_lazy(make_error)?;
+    let mut tx = db.pool.begin().await.change_context_lazy(make_error)?;
+    db.save_super_user(
+        &mut tx,
+        &AccountName::try_new("admin").change_context_lazy(make_error)?,
+        &AccountPassword::try_new(password_hash).change_context_lazy(make_error)?,
+    )
+    .await
+    .change_context_lazy(make_error)?;
+    tx.commit().await.change_context_lazy(make_error)?;
+    log::info!("create super user success");
     Ok(())
 }

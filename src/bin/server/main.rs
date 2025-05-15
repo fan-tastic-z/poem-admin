@@ -7,7 +7,7 @@ use poem_admin::{
 };
 
 #[derive(Debug, clap::Parser)]
-#[command(name = "percas", version, long_version = version(), styles=styled())]
+#[command(name = "poem-admin", version, long_version = version(), styles=styled())]
 struct Command {
     #[clap(subcommand)]
     cmd: SubCommand,
@@ -18,6 +18,7 @@ impl Command {
         match self.cmd {
             SubCommand::Server(cmd) => cmd.run(),
             SubCommand::InitData(cmd) => cmd.run(),
+            SubCommand::CreateSuperUser(cmd) => cmd.run(),
         }
     }
 }
@@ -26,6 +27,7 @@ impl Command {
 enum SubCommand {
     Server(cli::CommandStart),
     InitData(cli::CommandInitData),
+    CreateSuperUser(cli::CreateSuperUser),
 }
 
 fn main() -> Result<(), Error> {

@@ -70,8 +70,9 @@ impl From<Report<Error>> for ApiError {
     fn from(e: Report<Error>) -> Self {
         log::error!("ApiError: {:#?}", e);
         match e.downcast_ref::<Error>() {
-            Some(Error::BadRequest(message)) => Self::BadRequest(message.clone()),
-            _ => Self::InternalServerError(e.to_string()),
+            Some(Error::BadRequest(msg)) => Self::BadRequest(msg.to_string()),
+            Some(e) => Self::InternalServerError(e.to_string()),
+            None => Self::InternalServerError(e.to_string()),
         }
     }
 }
@@ -87,33 +88,30 @@ impl ResponseError for ApiError {
     }
 
     fn as_response(&self) -> Response {
-        use ApiError::*;
-
-        match self {
-            InternalServerError(_) => Json(ApiResponseBody::new_error(
+        let (status, message, should_log) = match self {
+            Self::InternalServerError(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_string(),
-            ))
-            .into_response(),
-            Unauthorized(message) => {
-                log::error!("Unauthorized: {}", message);
-                Json(ApiResponseBody::new_error(
-                    StatusCode::UNAUTHORIZED,
-                    "Unauthorized".to_string(),
-                ))
-                .into_response()
+                true,
+            ),
+            Self::Unauthorized(_) => (StatusCode::UNAUTHORIZED, "Unauthorized".to_string(), true),
+            Self::UnprocessableEntity(msg) => {
+                (StatusCode::UNPROCESSABLE_ENTITY, msg.to_string(), false)
             }
-            UnprocessableEntity(message) => Json(ApiResponseBody::new_error(
-                StatusCode::UNPROCESSABLE_ENTITY,
-                message.to_string(),
-            ))
-            .into_response(),
-            BadRequest(message) => Json(ApiResponseBody::new_error(
-                StatusCode::BAD_REQUEST,
-                message.to_string(),
-            ))
-            .into_response(),
+            Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.to_string(), false),
+        };
+
+        if should_log {
+            log::error!(
+                "{}: {}",
+                status.canonical_reason().unwrap_or("Error"),
+                message
+            );
         }
+
+        let mut resp = Json(ApiResponseBody::new_error(status, message)).into_response();
+        resp.set_status(status);
+        resp
     }
 }
 

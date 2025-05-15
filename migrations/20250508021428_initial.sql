@@ -6,14 +6,14 @@ CREATE TABLE IF NOT EXISTS account (
     password TEXT NOT NULL DEFAULT '',
     phone TEXT NOT NULL DEFAULT '',
     remark TEXT NOT NULL DEFAULT '',
-    last_login_time TIMESTAMPTZ NOT NULL,
-    is_deleteable BOOLEAN NOT NULL DEFAULT FALSE,
+    last_login_time TIMESTAMPTZ,
+    is_deletable BOOLEAN NOT NULL DEFAULT FALSE,
     organization_id BIGINT NOT NULL DEFAULT 0,
     organization_name TEXT NOT NULL DEFAULT '',
     role_id BIGINT NOT NULL DEFAULT 0,
     role_name TEXT NOT NULL DEFAULT '',
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ
 );
 
@@ -23,9 +23,9 @@ CREATE TABLE IF NOT EXISTS role (
     description TEXT NOT NULL DEFAULT '',
     created_by BIGINT NOT NULL DEFAULT 0,
     created_by_name TEXT NOT NULL DEFAULT '',
-    is_deleteable BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ,
+    is_deletable BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ
 );
 
@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS menu (
     parent_id BIGINT NOT NULL DEFAULT 0,
     parent_name TEXT NOT NULL DEFAULT '',
     order_index BIGINT NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ
 );
 
@@ -46,8 +46,8 @@ CREATE TABLE IF NOT EXISTS role_menu (
     role_name TEXT NOT NULL DEFAULT '',
     menu_id BIGINT NOT NULL DEFAULT 0,
     menu_name TEXT NOT NULL DEFAULT '',
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ
 );
 
@@ -56,8 +56,8 @@ CREATE TABLE IF NOT EXISTS organization (
     name TEXT NOT NULL UNIQUE,
     parent_id BIGINT NOT NULL DEFAULT 0,
     parent_name TEXT NOT NULL DEFAULT '',
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ
 );
 
@@ -67,8 +67,8 @@ CREATE TABLE IF NOT EXISTS route (
     method TEXT NOT NULL DEFAULT '',
     menu_id BIGINT NOT NULL DEFAULT 0,
     menu_name TEXT NOT NULL DEFAULT '',
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ
 );
 

@@ -2,6 +2,8 @@ use crate::{domain::ports::SysRepository, errors::Error};
 
 use super::{
     models::{
+        account::{Account, CreateAccountRequest},
+        auth::LoginRequest,
         menu::MenuTree,
         organization::CreateOrganizationRequest,
         page_utils::PageFilter,
@@ -53,6 +55,16 @@ where
 
     async fn create_organization(&self, req: &CreateOrganizationRequest) -> Result<i64, Error> {
         let res = self.repo.create_organization(req).await?;
+        Ok(res)
+    }
+
+    async fn create_account(&self, req: &CreateAccountRequest) -> Result<i64, Error> {
+        let res = self.repo.create_account(req).await?;
+        Ok(res)
+    }
+
+    async fn login(&self, req: &LoginRequest) -> Result<Account, Error> {
+        let res = self.repo.login(req).await?;
         Ok(res)
     }
 }

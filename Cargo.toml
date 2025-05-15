@@ -9,29 +9,33 @@ path = "src/bin/server/main.rs"
 
 [dependencies]
 anstyle = "1.0.10"
+argon2 = { version = "0.5.3", features = ["std"] }
 build-data = "0.3.0"
 chrono = { version = "0.4.41", features = ["serde"] }
-clap = { version = "4.5.37", features = ["derive"] }
+clap = { version = "4.5.38", features = ["derive"] }
 const_format = "0.2.34"
-ctrlc = "3.4.6"
+ctrlc = "3.4.7"
 email_address = "0.2.9"
 error-stack = "0.5.0"
 fastimer = "0.9.0"
 gix-discover = "0.40.1"
+jsonwebtoken = "9.3.1"
 local-ip-address = "0.6.5"
 log = "0.4.27"
-logforth = { version = "0.24.0", features = [
+logforth = { version = "0.25.0", features = [
     "colored",
     "json",
     "fastrace",
     "rolling-file",
 ] }
-mea = "0.3.5"
+mea = "0.3.7"
 nutype = { version = "0.6.1", features = ["serde"] }
 pin-project = "1.1.10"
 poem = "3.1.10"
-rust-embed = "8.7.1"
+rand = { version = "0.9.1", features = ["std_rng"] }
+rust-embed = "8.7.2"
 serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
 shadow-rs = "1.1.1"
 sqlx = { version = "0.8.5", features = [
     "postgres",

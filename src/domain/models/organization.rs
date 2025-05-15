@@ -1,5 +1,12 @@
 use nutype::nutype;
 
+pub enum OrganizationLimitType {
+    Root,                       // 跟组织
+    FirstLevel,                 // 一级组织
+    SubOrganization,            // 子组织
+    SubOrganizationIncludeSelf, // 子组织包含自己
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, sqlx::FromRow)]
 pub struct Organization {
     pub id: i64,
@@ -26,18 +33,6 @@ impl CreateOrganizationRequest {
             parent_id,
             parent_name,
         }
-    }
-
-    pub fn name(&self) -> &OrganizationName {
-        &self.name
-    }
-
-    pub fn parent_id(&self) -> i64 {
-        self.parent_id
-    }
-
-    pub fn parent_name(&self) -> Option<&OrganizationName> {
-        self.parent_name.as_ref()
     }
 }
 

@@ -9,6 +9,25 @@ use crate::{
 use super::db::Db;
 
 impl Db {
+    pub async fn all_organizations(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+    ) -> Result<Vec<Organization>, Error> {
+        let res = sqlx::query_as(
+            r#"
+        SELECT
+            id,
+            name,
+            parent_id,
+            parent_name
+        FROM organization"#,
+        )
+        .fetch_all(tx.as_mut())
+        .await
+        .change_context_lazy(|| Error::Message("failed to all organizations".to_string()))?;
+        Ok(res)
+    }
+
     pub async fn save_organization(
         &self,
         tx: &mut Transaction<'_, Postgres>,
@@ -24,9 +43,9 @@ impl Db {
         RETURNING id
         "#,
         )
-        .bind(req.name().as_ref())
-        .bind(req.parent_id())
-        .bind(req.parent_name().map(|n| n.as_ref()))
+        .bind(req.name.as_ref())
+        .bind(req.parent_id)
+        .bind(req.parent_name.as_ref().map(|n| n.as_ref()).unwrap_or(""))
         .fetch_one(tx.as_mut())
         .await
         .change_context_lazy(|| Error::Message("failed to save organization".to_string()))?;

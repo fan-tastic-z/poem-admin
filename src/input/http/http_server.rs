@@ -13,7 +13,10 @@ use crate::{
     utils::runtime::{self, Runtime},
 };
 
-use super::handlers::{health::health, menu, organization, role};
+use super::{
+    handlers::{health::health, login, menu, organization, role},
+    middleware::auth::AuthMiddleware,
+};
 
 pub(crate) type ServerFuture<T> = runtime::JoinHandle<Result<T, io::Error>>;
 
@@ -114,19 +117,19 @@ pub async fn start_server<S: SysService + Send + Sync + 'static>(
 fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
     Route::new()
         .at("/health", get(health))
+        .nest("/login", post(login::login::<S>::default()))
         .nest(
-            "/menus",
-            Route::new().at("", get(menu::list_menu::<S>::default())),
-        )
-        .nest(
-            "/roles",
-            Route::new().at(
-                "",
-                post(role::create_role::<S>::default()).get(role::list_role::<S>::default()),
-            ),
-        )
-        .nest(
-            "/organizations",
-            Route::new().at("", post(organization::create_organization::<S>::default())),
+            "/",
+            Route::new()
+                .at("menus", get(menu::list_menu::<S>::default()))
+                .at(
+                    "roles",
+                    post(role::create_role::<S>::default()).get(role::list_role::<S>::default()),
+                )
+                .at(
+                    "organizations",
+                    post(organization::create_organization::<S>::default()),
+                )
+                .with(AuthMiddleware::<S>::default()),
         )
 }

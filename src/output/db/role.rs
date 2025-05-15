@@ -83,7 +83,7 @@ impl Db {
         Ok(roles)
     }
 
-    pub async fn fetch_role_by_name(
+    pub async fn filter_role_by_name(
         &self,
         tx: &mut Transaction<'_, Postgres>,
         name: &str,
@@ -127,11 +127,11 @@ impl Db {
         RETURNING id
         "#,
         )
-        .bind(req.name().as_ref())
-        .bind(req.description().map(|d| d.as_ref()))
-        .bind(req.created_by())
-        .bind(req.created_by_name().as_ref())
-        .bind(req.is_deleteable())
+        .bind(req.name.as_ref())
+        .bind(req.description.as_ref().map(|d| d.as_ref()))
+        .bind(req.created_by)
+        .bind(req.created_by_name.as_ref())
+        .bind(req.is_deleteable)
         .fetch_one(tx.as_mut())
         .await
         .change_context_lazy(|| Error::Message("failed to save role".to_string()))?;

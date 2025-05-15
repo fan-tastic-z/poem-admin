@@ -12,7 +12,7 @@ pub struct Db {
 }
 
 impl Db {
-    pub async fn new(config: Config) -> Result<Self, Error> {
+    pub async fn new(config: &Config) -> Result<Self, Error> {
         let opts = PgConnectOptions::new()
             .host(&config.database.host)
             .port(config.database.port)

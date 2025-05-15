@@ -33,14 +33,6 @@ impl CreateRoleMenuRequest {
     pub fn new(menu_id: i64, menu_name: MenuName) -> Self {
         Self { menu_id, menu_name }
     }
-
-    pub fn menu_id(&self) -> i64 {
-        self.menu_id
-    }
-
-    pub fn menu_name(&self) -> &MenuName {
-        &self.menu_name
-    }
 }
 
 impl CreateRoleRequest {
@@ -60,30 +52,6 @@ impl CreateRoleRequest {
             is_deleteable,
             menus,
         }
-    }
-
-    pub fn name(&self) -> &RoleName {
-        &self.name
-    }
-
-    pub fn description(&self) -> Option<&RoleDescription> {
-        self.description.as_ref()
-    }
-
-    pub fn created_by(&self) -> i64 {
-        self.created_by
-    }
-
-    pub fn created_by_name(&self) -> &CreateByName {
-        &self.created_by_name
-    }
-
-    pub fn is_deleteable(&self) -> bool {
-        self.is_deleteable
-    }
-
-    pub fn menus(&self) -> &Vec<CreateRoleMenuRequest> {
-        &self.menus
     }
 }
 

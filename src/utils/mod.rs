@@ -1,3 +1,4 @@
+pub mod password_hash;
 pub mod runtime;
 pub mod styled;
 pub mod telemetry;

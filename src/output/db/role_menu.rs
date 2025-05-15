@@ -20,8 +20,8 @@ impl Db {
         query_builder.push_values(req, |mut b, role_menu| {
             b.push_bind(role_id)
                 .push_bind(role_name)
-                .push_bind(role_menu.menu_id())
-                .push_bind(role_menu.menu_name().as_ref());
+                .push_bind(role_menu.menu_id)
+                .push_bind(role_menu.menu_name.as_ref());
         });
         query_builder.build().execute(tx.as_mut()).await?;
         Ok(())
