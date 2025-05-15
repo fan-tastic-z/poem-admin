@@ -14,7 +14,7 @@ use crate::{
 };
 
 use super::{
-    handlers::{health::health, login, menu, organization, role},
+    handlers::{account, health::health, login, menu, organization, role},
     middleware::auth::AuthMiddleware,
 };
 
@@ -121,6 +121,7 @@ fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
         .nest(
             "/",
             Route::new()
+                .at("accounts", post(account::create_account::<S>::default()))
                 .at("menus", get(menu::list_menu::<S>::default()))
                 .at(
                     "roles",

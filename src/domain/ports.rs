@@ -66,4 +66,11 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
     ) -> impl Future<Output = Result<Vec<i64>, Error>> + Send;
 
     fn login(&self, req: &LoginRequest) -> impl Future<Output = Result<Account, Error>> + Send;
+
+    fn check_organization_user_creation_permission(
+        &self,
+        current_user_id: i64,
+        target_organization_id: i64,
+        limit_type: OrganizationLimitType,
+    ) -> impl Future<Output = Result<(), Error>> + Send;
 }

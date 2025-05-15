@@ -36,9 +36,33 @@ impl SysRepository for Db {
         return Err(Error::BadRequest("invalid account or password".to_string()).into());
     }
 
+    async fn check_organization_user_creation_permission(
+        &self,
+        current_user_id: i64,
+        target_organization_id: i64,
+        limit_type: OrganizationLimitType,
+    ) -> Result<(), Error> {
+        let mut tx =
+            self.pool.begin().await.change_context_lazy(|| {
+                Error::Message("failed to begin transaction".to_string())
+            })?;
+        let account = self.fetch_account_by_id(&mut tx, current_user_id).await?;
+        if account.organization_id == -1 && limit_type == OrganizationLimitType::FirstLevel {
+            return Ok(());
+        }
+        let is_admin = account.id == 1;
+        let organization_ids = self
+            .list_origanization_by_id(target_organization_id, is_admin, limit_type)
+            .await?;
+        if organization_ids.contains(&current_user_id) {
+            return Ok(());
+        }
+        return Err(Error::BadRequest("no permission".to_string()).into());
+    }
+
     async fn list_origanization_by_id(
         &self,
-        id: i64,
+        target_organization_id: i64,
         is_admin: bool,
         limit_type: OrganizationLimitType,
     ) -> Result<Vec<i64>, Error> {
@@ -56,7 +80,7 @@ impl SysRepository for Db {
         }
 
         // 非admin 但是根组织用户，返回所有一级组织及组织id
-        if id == -1 {
+        if target_organization_id == -1 {
             return Ok(organizations.iter().map(|o| o.id).collect::<Vec<i64>>());
         }
 
@@ -72,17 +96,23 @@ impl SysRepository for Db {
 
         match limit_type {
             OrganizationLimitType::FirstLevel => {
-                let first_level_id = get_first_level_id(&parent_id_map, id);
+                let first_level_id = get_first_level_id(&parent_id_map, target_organization_id);
                 return Ok(list_organization_by_user_contain(
                     first_level_id,
                     &organization_map,
                 ));
             }
             OrganizationLimitType::SubOrganization => {
-                return Ok(list_organization_by_user(id, &organization_map));
+                return Ok(list_organization_by_user(
+                    target_organization_id,
+                    &organization_map,
+                ));
             }
             OrganizationLimitType::SubOrganizationIncludeSelf => {
-                return Ok(list_organization_by_user_contain(id, &organization_map));
+                return Ok(list_organization_by_user_contain(
+                    target_organization_id,
+                    &organization_map,
+                ));
             }
             _ => {
                 return Err(Error::BadRequest("invalid limit type".to_string()).into());
@@ -95,6 +125,13 @@ impl SysRepository for Db {
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
+        if self
+            .filter_account_by_name(&mut tx, &req.name)
+            .await?
+            .is_some()
+        {
+            return Err(Error::BadRequest("account already exists".to_string()).into());
+        }
         let id = self.save_account(&mut tx, req).await?;
         tx.commit()
             .await

@@ -1,5 +1,6 @@
 use nutype::nutype;
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum OrganizationLimitType {
     Root,                       // 跟组织
     FirstLevel,                 // 一级组织

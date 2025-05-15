@@ -4,6 +4,7 @@ use sqlx::{Postgres, Row, Transaction};
 use crate::{
     domain::models::account::{Account, AccountName, AccountPassword, CreateAccountRequest},
     errors::Error,
+    utils::password_hash::compute_password_hash,
 };
 
 use super::db::Db;
@@ -99,23 +100,25 @@ impl Db {
         tx: &mut Transaction<'_, Postgres>,
         req: &CreateAccountRequest,
     ) -> Result<i64, Error> {
+        let password = compute_password_hash(&req.password)?;
         let res = sqlx::query(
             r#"
         INSERT INTO
             account
-                (name, password, email, organization_id, organization_name, role_id, role_name)
+                (name, password, email, organization_id, organization_name, role_id, role_name, is_deletable)
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7)
+            ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id
         "#,
         )
         .bind(req.name.as_ref())
-        .bind(req.password.as_ref())
+        .bind(password)
         .bind(req.email.as_ref().map(|e| e.as_ref()).unwrap_or(""))
         .bind(req.organization_id)
         .bind(req.organization_name.as_ref())
         .bind(req.role_id)
         .bind(req.role_name.as_ref())
+        .bind(req.is_deletable)
         .fetch_one(tx.as_mut())
         .await
         .change_context_lazy(|| Error::Message("failed to save account".to_string()))?;

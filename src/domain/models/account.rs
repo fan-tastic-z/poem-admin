@@ -26,6 +26,7 @@ pub struct CreateAccountRequest {
     pub organization_name: OrganizationName,
     pub role_id: i64,
     pub role_name: RoleName,
+    pub is_deletable: bool,
 }
 
 impl CreateAccountRequest {
@@ -37,6 +38,7 @@ impl CreateAccountRequest {
         organization_name: OrganizationName,
         role_id: i64,
         role_name: RoleName,
+        is_deletable: bool,
     ) -> Self {
         Self {
             name,
@@ -46,6 +48,7 @@ impl CreateAccountRequest {
             organization_name,
             role_id,
             role_name,
+            is_deletable,
         }
     }
 }
