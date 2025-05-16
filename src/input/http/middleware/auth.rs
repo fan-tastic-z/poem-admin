@@ -6,12 +6,10 @@ use poem::{
     web::headers::{self, HeaderMapExt, authorization::Bearer},
 };
 
-use crate::{cli::Ctx, domain::ports::SysService};
-
-#[derive(Debug, Clone)]
-pub struct UserInfo {
-    pub user_id: i64,
-}
+use crate::{
+    cli::Ctx,
+    domain::{models::extension_data::ExtensionData, ports::SysService},
+};
 
 pub struct AuthMiddleware<S> {
     _phantom: PhantomData<S>,
@@ -55,7 +53,7 @@ impl<E: Endpoint, S: SysService> Endpoint for AuthEndpoint<E, S> {
                 Error::from_status(StatusCode::UNAUTHORIZED)
             })?;
             let user_id = claims.claims.user_id;
-            req.set_data(UserInfo { user_id });
+            req.set_data(ExtensionData { user_id });
             self.inner.call(req).await
         } else {
             log::error!("no token");

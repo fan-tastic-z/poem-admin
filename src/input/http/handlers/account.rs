@@ -14,6 +14,7 @@ use crate::{
                 AccountEmail, AccountEmailError, AccountName, AccountNameError, AccountPassword,
                 AccountPasswordError, CreateAccountRequest,
             },
+            extension_data::ExtensionData,
             organization::{OrganizationName, OrganizationNameError},
             role::{RoleName, RoleNameError},
         },
@@ -101,12 +102,13 @@ pub struct CreateAccountHttpResponseData {
 #[handler]
 pub async fn create_account<S: SysService + Send + Sync + 'static>(
     state: Data<&Ctx<S>>,
+    extension_data: Data<&ExtensionData>,
     Json(body): Json<CreateAccountHttpRequestBody>,
 ) -> Result<ApiSuccess<CreateAccountHttpResponseData>, ApiError> {
     let req = body.try_into_domain()?;
     state
         .sys_service
-        .create_account(&req)
+        .create_account(&req, extension_data.user_id)
         .await
         .map_err(ApiError::from)
         .map(|id| ApiSuccess::new(StatusCode::CREATED, CreateAccountHttpResponseData { id }))

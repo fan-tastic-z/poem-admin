@@ -5,7 +5,7 @@ use super::models::{
     account::{Account, CreateAccountRequest},
     auth::LoginRequest,
     menu::MenuTree,
-    organization::{CreateOrganizationRequest, OrganizationLimitType},
+    organization::{CreateOrganizationRequest, Organization, OrganizationLimitType},
     page_utils::PageFilter,
     role::{CreateRoleRequest, ListRoleResponseData, RoleName},
 };
@@ -31,6 +31,7 @@ pub trait SysService: Clone + Send + Sync + 'static {
     fn create_account(
         &self,
         req: &CreateAccountRequest,
+        current_user_id: i64,
     ) -> impl Future<Output = Result<i64, Error>> + Send;
 
     fn login(&self, req: &LoginRequest) -> impl Future<Output = Result<Account, Error>> + Send;
@@ -63,6 +64,7 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
         id: i64,
         is_admin: bool,
         limit_type: OrganizationLimitType,
+        organizations: Vec<Organization>,
     ) -> impl Future<Output = Result<Vec<i64>, Error>> + Send;
 
     fn login(&self, req: &LoginRequest) -> impl Future<Output = Result<Account, Error>> + Send;

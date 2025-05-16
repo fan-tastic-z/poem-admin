@@ -5,7 +5,7 @@ use super::{
         account::{Account, CreateAccountRequest},
         auth::LoginRequest,
         menu::MenuTree,
-        organization::CreateOrganizationRequest,
+        organization::{CreateOrganizationRequest, OrganizationLimitType},
         page_utils::PageFilter,
         role::{CreateRoleRequest, ListRoleResponseData, RoleName},
     },
@@ -58,7 +58,18 @@ where
         Ok(res)
     }
 
-    async fn create_account(&self, req: &CreateAccountRequest) -> Result<i64, Error> {
+    async fn create_account(
+        &self,
+        req: &CreateAccountRequest,
+        current_user_id: i64,
+    ) -> Result<i64, Error> {
+        self.repo
+            .check_organization_user_creation_permission(
+                current_user_id,
+                req.organization_id,
+                OrganizationLimitType::FirstLevel,
+            )
+            .await?;
         let res = self.repo.create_account(req).await?;
         Ok(res)
     }

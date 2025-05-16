@@ -7,7 +7,7 @@ use crate::{
             account::{Account, CreateAccountRequest},
             auth::LoginRequest,
             menu::{MenuTree, children_menu_tree},
-            organization::{CreateOrganizationRequest, OrganizationLimitType},
+            organization::{CreateOrganizationRequest, Organization, OrganizationLimitType},
             page_utils::PageFilter,
             role::{CreateRoleRequest, ListRoleResponseData, RoleName},
         },
@@ -51,10 +51,11 @@ impl SysRepository for Db {
             return Ok(());
         }
         let is_admin = account.id == 1;
+        let organizations = self.all_organizations(&mut tx).await?;
         let organization_ids = self
-            .list_origanization_by_id(target_organization_id, is_admin, limit_type)
+            .list_origanization_by_id(target_organization_id, is_admin, limit_type, organizations)
             .await?;
-        if organization_ids.contains(&current_user_id) {
+        if organization_ids.contains(&target_organization_id) {
             return Ok(());
         }
         return Err(Error::BadRequest("no permission".to_string()).into());
@@ -65,13 +66,8 @@ impl SysRepository for Db {
         target_organization_id: i64,
         is_admin: bool,
         limit_type: OrganizationLimitType,
+        organizations: Vec<Organization>,
     ) -> Result<Vec<i64>, Error> {
-        let mut tx =
-            self.pool.begin().await.change_context_lazy(|| {
-                Error::Message("failed to begin transaction".to_string())
-            })?;
-        let organizations = self.all_organizations(&mut tx).await?;
-
         // admin 返回所有的组织ID
         if is_admin {
             let mut ids = organizations.iter().map(|o| o.id).collect::<Vec<i64>>();
