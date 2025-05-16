@@ -121,14 +121,20 @@ fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
         .nest(
             "/",
             Route::new()
-                .at("accounts", post(account::create_account::<S>::default()))
-                .at("menus", get(menu::list_menu::<S>::default()))
-                .at(
-                    "roles",
-                    post(role::create_role::<S>::default()).get(role::list_role::<S>::default()),
+                .at("/accounts", post(account::create_account::<S>::default()))
+                .at("/menus", get(menu::list_menu::<S>::default()))
+                .nest(
+                    "/roles",
+                    Route::new()
+                        .at(
+                            "/",
+                            post(role::create_role::<S>::default())
+                                .get(role::list_role::<S>::default()),
+                        )
+                        .at("/:id/detail", get(role::get_role::<S>::default())),
                 )
                 .at(
-                    "organizations",
+                    "/organizations",
                     post(organization::create_organization::<S>::default()),
                 )
                 .with(AuthMiddleware::<S>::default()),

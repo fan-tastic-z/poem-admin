@@ -7,7 +7,10 @@ use super::models::{
     menu::MenuTree,
     organization::{CreateOrganizationRequest, Organization, OrganizationLimitType},
     page_utils::PageFilter,
-    role::{CreateRoleRequest, ListRoleResponseData, RoleName},
+    role::{
+        CreateRoleRequest, GetRoleRequest, GetRoleResponseData, ListRoleResponseData, Role,
+        RoleName,
+    },
 };
 use error_stack::Result;
 
@@ -36,9 +39,19 @@ pub trait SysService: Clone + Send + Sync + 'static {
     ) -> impl Future<Output = Result<i64, Error>> + Send;
 
     fn login(&self, req: &LoginRequest) -> impl Future<Output = Result<Account, Error>> + Send;
+
+    fn get_role(
+        &self,
+        req: &GetRoleRequest,
+    ) -> impl Future<Output = Result<GetRoleResponseData, Error>> + Send;
 }
 
 pub trait SysRepository: Clone + Send + Sync + 'static {
+    fn list_menu_by_role_id(
+        &self,
+        role_id: i64,
+    ) -> impl Future<Output = Result<Vec<MenuTree>, Error>> + Send;
+
     fn list_menu(&self) -> impl Future<Output = Result<Vec<MenuTree>, Error>> + Send;
     fn create_role(
         &self,
@@ -83,4 +96,6 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
         assigner_user_id: i64,
         assignee_role_id: i64,
     ) -> impl Future<Output = Result<(), Error>> + Send;
+
+    fn get_role_by_id(&self, id: i64) -> impl Future<Output = Result<Role, Error>> + Send;
 }

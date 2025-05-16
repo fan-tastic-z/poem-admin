@@ -12,6 +12,33 @@ use crate::{
 use super::db::Db;
 
 impl Db {
+    pub async fn fetch_role_by_id(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        id: i64,
+    ) -> Result<Role, Error> {
+        let role = sqlx::query_as::<_, Role>(
+            r#"
+            SELECT
+                id,
+                name,
+                description,
+                is_deletable,
+                created_by,
+                created_by_name
+            FROM
+                role
+            WHERE
+                id = $1
+        "#,
+        )
+        .bind(id)
+        .fetch_one(tx.as_mut())
+        .await
+        .change_context_lazy(|| Error::Message("failed to fetch role by id".to_string()))?;
+        Ok(role)
+    }
+
     pub async fn filter_role_count(
         &self,
         tx: &mut Transaction<'_, Postgres>,

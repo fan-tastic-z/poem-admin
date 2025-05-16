@@ -7,7 +7,9 @@ use super::{
         menu::MenuTree,
         organization::{CreateOrganizationRequest, OrganizationLimitType},
         page_utils::PageFilter,
-        role::{CreateRoleRequest, ListRoleResponseData, RoleName},
+        role::{
+            CreateRoleRequest, GetRoleRequest, GetRoleResponseData, ListRoleResponseData, RoleName,
+        },
     },
     ports::SysService,
 };
@@ -34,6 +36,12 @@ impl<R> SysService for Service<R>
 where
     R: SysRepository,
 {
+    async fn get_role(&self, req: &GetRoleRequest) -> Result<GetRoleResponseData, Error> {
+        let role = self.repo.get_role_by_id(req.id).await?;
+        let menus = self.repo.list_menu_by_role_id(req.id).await?;
+        Ok(GetRoleResponseData::new(role, menus))
+    }
+
     async fn list_menu(&self) -> Result<Vec<MenuTree>, Error> {
         let res = self.repo.list_menu().await?;
         Ok(res)

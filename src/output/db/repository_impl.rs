@@ -9,7 +9,7 @@ use crate::{
             menu::{MenuTree, children_menu_tree},
             organization::{CreateOrganizationRequest, Organization, OrganizationLimitType},
             page_utils::PageFilter,
-            role::{CreateRoleRequest, ListRoleResponseData, RoleName},
+            role::{CreateRoleRequest, ListRoleResponseData, Role, RoleName},
         },
         ports::SysRepository,
     },
@@ -20,6 +20,43 @@ use crate::{
 use super::db::Db;
 
 impl SysRepository for Db {
+    async fn get_role_by_id(&self, id: i64) -> Result<Role, Error> {
+        let mut tx =
+            self.pool.begin().await.change_context_lazy(|| {
+                Error::Message("failed to begin transaction".to_string())
+            })?;
+        let role = self.fetch_role_by_id(&mut tx, id).await?;
+        tx.commit()
+            .await
+            .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
+        Ok(role)
+    }
+
+    async fn list_menu_by_role_id(&self, role_id: i64) -> Result<Vec<MenuTree>, Error> {
+        let mut tx =
+            self.pool.begin().await.change_context_lazy(|| {
+                Error::Message("failed to begin transaction".to_string())
+            })?;
+        let menus = self
+            .list_menu(&mut tx)
+            .await
+            .change_context_lazy(|| Error::Message("failed to list menu".to_string()))?;
+
+        let role_menus = self
+            .filter_role_menu_by_role_id(&mut tx, role_id)
+            .await
+            .change_context_lazy(|| Error::Message("failed to filter role menu".to_string()))?;
+        let mut sid_map = HashMap::new();
+        for v in role_menus {
+            sid_map.insert(v.menu_id, true);
+        }
+        let menu_trees = children_menu_tree(&menus, &sid_map, -1);
+        tx.commit()
+            .await
+            .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
+        Ok(menu_trees)
+    }
+
     async fn check_role_menu_subset(
         &self,
         assigner_user_id: i64,

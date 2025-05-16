@@ -1,7 +1,7 @@
 use poem::{
     Result, handler,
     http::StatusCode,
-    web::{Data, Json, Query},
+    web::{Data, Json, Path, Query},
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -11,11 +11,12 @@ use crate::{
     domain::{
         models::{
             extension_data::ExtensionData,
-            menu::{MenuName, MenuNameError},
+            menu::{MenuName, MenuNameError, MenuTree},
             page_utils::{PageFilter, PageNo, PageNoError, PageSize, PageSizeError},
             role::{
-                CreateRoleMenuRequest, CreateRoleRequest, ListRoleRequest, Role, RoleDescription,
-                RoleDescriptionError, RoleName, RoleNameError,
+                CreateRoleMenuRequest, CreateRoleRequest, GetRoleRequest, GetRoleResponseData,
+                ListRoleRequest, Role, RoleDescription, RoleDescriptionError, RoleName,
+                RoleNameError,
             },
         },
         ports::SysService,
@@ -210,4 +211,37 @@ pub async fn list_role<S: SysService + Send + Sync + 'static>(
                 },
             )
         })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct GetRoleHttpResponseData {
+    pub id: i64,
+    pub name: String,
+    pub description: Option<String>,
+    pub menus: Vec<MenuTree>,
+}
+
+impl From<GetRoleResponseData> for GetRoleHttpResponseData {
+    fn from(data: GetRoleResponseData) -> Self {
+        Self {
+            id: data.role.id,
+            name: data.role.name,
+            description: Some(data.role.description),
+            menus: data.menus,
+        }
+    }
+}
+
+#[handler]
+pub async fn get_role<S: SysService + Send + Sync + 'static>(
+    state: Data<&Ctx<S>>,
+    Path(id): Path<i64>,
+) -> Result<ApiSuccess<GetRoleHttpResponseData>, ApiError> {
+    let req = GetRoleRequest::new(id);
+    state
+        .sys_service
+        .get_role(&req)
+        .await
+        .map_err(ApiError::from)
+        .map(|data| ApiSuccess::new(StatusCode::OK, data.into()))
 }

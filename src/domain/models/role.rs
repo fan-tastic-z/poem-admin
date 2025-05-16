@@ -1,8 +1,10 @@
 use nutype::nutype;
 
-use super::{menu::MenuName, page_utils::PageFilter};
+use super::{
+    menu::{MenuName, MenuTree},
+    page_utils::PageFilter,
+};
 
-// TODO: 信任数据库中获取的数据，并且不需要做数据字段上的new type, 只做字段的取舍
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, sqlx::FromRow)]
 pub struct Role {
     pub id: i64,
@@ -98,5 +100,28 @@ pub struct ListRoleResponseData {
 impl ListRoleResponseData {
     pub fn new(total: i64, data: Vec<Role>) -> Self {
         Self { total, data }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GetRoleRequest {
+    pub id: i64,
+}
+
+impl GetRoleRequest {
+    pub fn new(id: i64) -> Self {
+        Self { id }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GetRoleResponseData {
+    pub role: Role,
+    pub menus: Vec<MenuTree>,
+}
+
+impl GetRoleResponseData {
+    pub fn new(role: Role, menus: Vec<MenuTree>) -> Self {
+        Self { role, menus }
     }
 }
