@@ -39,8 +39,12 @@ where
         Ok(res)
     }
 
-    async fn create_role(&self, req: &CreateRoleRequest) -> Result<i64, Error> {
-        let res = self.repo.create_role(req).await?;
+    async fn create_role(
+        &self,
+        req: &CreateRoleRequest,
+        current_user_id: i64,
+    ) -> Result<i64, Error> {
+        let res = self.repo.create_role(req, current_user_id).await?;
         Ok(res)
     }
 

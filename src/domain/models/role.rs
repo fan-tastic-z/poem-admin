@@ -10,16 +10,14 @@ pub struct Role {
     pub description: String,
     pub created_by: i64,
     pub created_by_name: String,
-    pub is_deleteable: bool,
+    pub is_deletable: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CreateRoleRequest {
     pub name: RoleName,
     pub description: Option<RoleDescription>,
-    pub created_by: i64,
-    pub created_by_name: CreateByName,
-    pub is_deleteable: bool,
+    pub is_deletable: bool,
     pub menus: Vec<CreateRoleMenuRequest>,
 }
 
@@ -39,17 +37,13 @@ impl CreateRoleRequest {
     pub fn new(
         name: RoleName,
         description: Option<RoleDescription>,
-        created_by: i64,
-        created_by_name: CreateByName,
-        is_deleteable: bool,
+        is_deletable: bool,
         menus: Vec<CreateRoleMenuRequest>,
     ) -> Self {
         Self {
             name,
             description,
-            created_by,
-            created_by_name,
-            is_deleteable,
+            is_deletable,
             menus,
         }
     }
@@ -74,16 +68,6 @@ pub struct RoleName(String);
     )
 )]
 pub struct RoleDescription(String);
-
-#[nutype(
-    sanitize(trim, lowercase),
-    validate(not_empty, len_char_min = 3, len_char_max = 10),
-    derive(
-        Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash, AsRef, Deref, Borrow, TryFrom,
-        Serialize
-    )
-)]
-pub struct CreateByName(String);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ListRoleRequest {

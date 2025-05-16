@@ -16,6 +16,7 @@ pub trait SysService: Clone + Send + Sync + 'static {
     fn create_role(
         &self,
         req: &CreateRoleRequest,
+        current_user_id: i64,
     ) -> impl Future<Output = Result<i64, Error>> + Send;
     fn list_role(
         &self,
@@ -42,6 +43,7 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
     fn create_role(
         &self,
         req: &CreateRoleRequest,
+        current_user_id: i64,
     ) -> impl Future<Output = Result<i64, Error>> + Send;
     fn list_role(
         &self,

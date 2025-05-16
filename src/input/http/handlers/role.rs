@@ -10,12 +10,12 @@ use crate::{
     cli::Ctx,
     domain::{
         models::{
+            extension_data::ExtensionData,
             menu::{MenuName, MenuNameError},
             page_utils::{PageFilter, PageNo, PageNoError, PageSize, PageSizeError},
             role::{
-                CreateByName, CreateByNameError, CreateRoleMenuRequest, CreateRoleRequest,
-                ListRoleRequest, Role, RoleDescription, RoleDescriptionError, RoleName,
-                RoleNameError,
+                CreateRoleMenuRequest, CreateRoleRequest, ListRoleRequest, Role, RoleDescription,
+                RoleDescriptionError, RoleName, RoleNameError,
             },
         },
         ports::SysService,
@@ -27,9 +27,6 @@ use crate::{
 pub struct CreateRoleHttpRequestBody {
     pub name: String,
     pub description: Option<String>,
-    // TODO: 需要从上下文获取
-    pub created_by: i64,
-    pub created_by_name: String,
     pub is_deleteable: bool,
     pub menus: Vec<CreateRoleMenu>,
 }
@@ -52,8 +49,6 @@ enum ParseCreateRoleHttpRequestError {
     #[error(transparent)]
     RoleDescription(#[from] RoleDescriptionError),
     #[error(transparent)]
-    CreateByName(#[from] CreateByNameError),
-    #[error(transparent)]
     MenuName(#[from] MenuNameError),
 }
 
@@ -65,9 +60,6 @@ impl From<ParseCreateRoleHttpRequestError> for ApiError {
             }
             ParseCreateRoleHttpRequestError::RoleDescription(e) => {
                 format!("Role description is invalid: {}", e.to_string())
-            }
-            ParseCreateRoleHttpRequestError::CreateByName(e) => {
-                format!("Create by name is invalid: {}", e.to_string())
             }
             ParseCreateRoleHttpRequestError::MenuName(e) => {
                 format!("Menu name is invalid: {}", e.to_string())
@@ -84,8 +76,6 @@ impl CreateRoleHttpRequestBody {
             .description
             .map(|d| RoleDescription::try_new(d))
             .transpose()?;
-        let created_by = self.created_by;
-        let created_by_name = CreateByName::try_new(self.created_by_name)?;
         let is_deleteable = self.is_deleteable;
         let menus = self
             .menus
@@ -100,8 +90,6 @@ impl CreateRoleHttpRequestBody {
         Ok(CreateRoleRequest::new(
             name,
             description,
-            created_by,
-            created_by_name,
             is_deleteable,
             menus,
         ))
@@ -111,12 +99,13 @@ impl CreateRoleHttpRequestBody {
 #[handler]
 pub async fn create_role<S: SysService + Send + Sync + 'static>(
     state: Data<&Ctx<S>>,
+    extension_data: Data<&ExtensionData>,
     Json(body): Json<CreateRoleHttpRequestBody>,
 ) -> Result<ApiSuccess<CreateRoleResponseData>, ApiError> {
     let request = body.try_into_domain()?;
     state
         .sys_service
-        .create_role(&request)
+        .create_role(&request, extension_data.user_id)
         .await
         .map_err(ApiError::from)
         .map(|id| ApiSuccess::new(StatusCode::CREATED, CreateRoleResponseData { id }))
@@ -163,7 +152,7 @@ impl From<Role> for ListRoleHttpResponseData {
             description: Some(role.description),
             created_by: role.created_by,
             created_by_name: role.created_by_name,
-            is_deleteable: role.is_deleteable,
+            is_deleteable: role.is_deletable,
         }
     }
 }

@@ -55,7 +55,7 @@ impl Db {
                 description,
                 created_by,
                 created_by_name,
-                is_deleteable,
+                is_deletable,
                 created_at,
                 updated_at,
                 deleted_at
@@ -96,7 +96,7 @@ impl Db {
             description,
             created_by,
             created_by_name,
-            is_deleteable,
+            is_deletable,
             created_at,
             updated_at,
             deleted_at
@@ -116,12 +116,14 @@ impl Db {
         &self,
         tx: &mut Transaction<'_, Postgres>,
         req: &CreateRoleRequest,
+        current_user_id: i64,
+        current_user_name: &str,
     ) -> Result<i64, Error> {
         let res = sqlx::query(
             r#"
         INSERT INTO
             role
-                (name, description, created_by, created_by_name, is_deleteable)
+                (name, description, created_by, created_by_name, is_deletable)
         VALUES
             ($1, $2, $3, $4, $5)
         RETURNING id
@@ -129,9 +131,9 @@ impl Db {
         )
         .bind(req.name.as_ref())
         .bind(req.description.as_ref().map(|d| d.as_ref()))
-        .bind(req.created_by)
-        .bind(req.created_by_name.as_ref())
-        .bind(req.is_deleteable)
+        .bind(current_user_id)
+        .bind(current_user_name)
+        .bind(req.is_deletable)
         .fetch_one(tx.as_mut())
         .await
         .change_context_lazy(|| Error::Message("failed to save role".to_string()))?;

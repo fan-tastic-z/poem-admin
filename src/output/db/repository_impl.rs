@@ -212,7 +212,11 @@ impl SysRepository for Db {
         Ok(menu_trees)
     }
 
-    async fn create_role(&self, req: &CreateRoleRequest) -> Result<i64, Error> {
+    async fn create_role(
+        &self,
+        req: &CreateRoleRequest,
+        current_user_id: i64,
+    ) -> Result<i64, Error> {
         let mut tx =
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
@@ -224,8 +228,14 @@ impl SysRepository for Db {
         {
             return Err(Error::BadRequest("role already exists".to_string()).into());
         }
+        let current_account = self
+            .fetch_account_by_id(&mut tx, current_user_id)
+            .await
+            .change_context_lazy(|| {
+                Error::Message("failed to fetch current account".to_string())
+            })?;
         let id = self
-            .save_role(&mut tx, req)
+            .save_role(&mut tx, req, current_user_id, &current_account.name)
             .await
             .change_context_lazy(|| Error::Message("failed to create role".to_string()))?;
 
