@@ -1,6 +1,6 @@
 use sqlx::{Postgres, QueryBuilder, Transaction};
 
-use crate::domain::models::role::CreateRoleMenuRequest;
+use crate::domain::models::{role::CreateRoleMenuRequest, role_menu::RoleMenu};
 
 use super::db::Db;
 
@@ -25,5 +25,23 @@ impl Db {
         });
         query_builder.build().execute(tx.as_mut()).await?;
         Ok(())
+    }
+
+    pub async fn filter_role_menu_by_role_id(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        role_id: i64,
+    ) -> Result<Vec<RoleMenu>, sqlx::Error> {
+        let role_menus = sqlx::query_as::<_, RoleMenu>(
+            r#"
+            SELECT role_id, role_name, menu_id, menu_name
+            FROM role_menu
+            WHERE role_id = $1
+            "#,
+        )
+        .bind(role_id)
+        .fetch_all(tx.as_mut())
+        .await?;
+        Ok(role_menus)
     }
 }

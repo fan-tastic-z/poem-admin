@@ -70,6 +70,7 @@ where
                 OrganizationLimitType::FirstLevel,
             )
             .await?;
+
         let res = self.repo.create_account(req).await?;
         Ok(res)
     }

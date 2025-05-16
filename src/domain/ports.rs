@@ -75,4 +75,10 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
         target_organization_id: i64,
         limit_type: OrganizationLimitType,
     ) -> impl Future<Output = Result<(), Error>> + Send;
+
+    fn check_role_menu_subset(
+        &self,
+        assigner_user_id: i64,
+        assignee_role_id: i64,
+    ) -> impl Future<Output = Result<(), Error>> + Send;
 }

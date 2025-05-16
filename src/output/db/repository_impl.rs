@@ -20,6 +20,39 @@ use crate::{
 use super::db::Db;
 
 impl SysRepository for Db {
+    async fn check_role_menu_subset(
+        &self,
+        assigner_user_id: i64,
+        assignee_role_id: i64,
+    ) -> Result<(), Error> {
+        let mut tx =
+            self.pool.begin().await.change_context_lazy(|| {
+                Error::Message("failed to begin transaction".to_string())
+            })?;
+        let assigner_account = self
+            .fetch_account_by_id(&mut tx, assigner_user_id)
+            .await
+            .change_context_lazy(|| Error::Message("failed to filter account".to_string()))?;
+        let assigner_role_menus = self
+            .filter_role_menu_by_role_id(&mut tx, assigner_account.role_id)
+            .await
+            .change_context_lazy(|| Error::Message("failed to filter role menu".to_string()))?;
+        let assignee_role_menus = self
+            .filter_role_menu_by_role_id(&mut tx, assignee_role_id)
+            .await
+            .change_context_lazy(|| Error::Message("failed to filter role menu".to_string()))?;
+        if !assigner_role_menus
+            .iter()
+            .all(|menu| assignee_role_menus.contains(menu))
+        {
+            return Err(Error::BadRequest(
+                "assigner role menu not subset of assignee role menu".to_string(),
+            )
+            .into());
+        }
+        Ok(())
+    }
+
     async fn login(&self, req: &LoginRequest) -> Result<Account, Error> {
         let mut tx =
             self.pool.begin().await.change_context_lazy(|| {
