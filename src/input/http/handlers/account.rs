@@ -12,9 +12,10 @@ use crate::{
         models::{
             account::{
                 AccountEmail, AccountEmailError, AccountName, AccountNameError, AccountPassword,
-                AccountPasswordError, CreateAccountRequest,
+                AccountPasswordError, CreateAccountRequest, CurrentAccountResponseData,
             },
             extension_data::ExtensionData,
+            menu::MenuTree,
             organization::{OrganizationName, OrganizationNameError},
             role::{RoleName, RoleNameError},
         },
@@ -112,4 +113,44 @@ pub async fn create_account<S: SysService + Send + Sync + 'static>(
         .await
         .map_err(ApiError::from)
         .map(|id| ApiSuccess::new(StatusCode::CREATED, CreateAccountHttpResponseData { id }))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CurrentAccountHttpResponseData {
+    pub id: i64,
+    pub name: String,
+    pub email: Option<String>,
+    pub organization_id: i64,
+    pub organization_name: String,
+    pub role_id: i64,
+    pub role_name: String,
+    pub menus: Vec<MenuTree>,
+}
+
+impl From<CurrentAccountResponseData> for CurrentAccountHttpResponseData {
+    fn from(data: CurrentAccountResponseData) -> Self {
+        Self {
+            id: data.account.id,
+            name: data.account.name,
+            email: data.account.email,
+            organization_id: data.account.organization_id,
+            organization_name: data.account.organization_name,
+            role_id: data.account.role_id,
+            role_name: data.account.role_name,
+            menus: data.menus,
+        }
+    }
+}
+
+#[handler]
+pub async fn current_account<S: SysService + Send + Sync + 'static>(
+    state: Data<&Ctx<S>>,
+    extension_data: Data<&ExtensionData>,
+) -> Result<ApiSuccess<CurrentAccountHttpResponseData>, ApiError> {
+    state
+        .sys_service
+        .current_account(extension_data.user_id)
+        .await
+        .map_err(ApiError::from)
+        .map(|data| ApiSuccess::new(StatusCode::OK, data.into()))
 }

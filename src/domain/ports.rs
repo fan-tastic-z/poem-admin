@@ -2,7 +2,7 @@ use crate::errors::Error;
 use std::future::Future;
 
 use super::models::{
-    account::{Account, CreateAccountRequest},
+    account::{Account, CreateAccountRequest, CurrentAccountResponseData},
     auth::LoginRequest,
     menu::MenuTree,
     organization::{CreateOrganizationRequest, Organization, OrganizationLimitType},
@@ -15,6 +15,10 @@ use super::models::{
 use error_stack::Result;
 
 pub trait SysService: Clone + Send + Sync + 'static {
+    fn current_account(
+        &self,
+        current_user_id: i64,
+    ) -> impl Future<Output = Result<CurrentAccountResponseData, Error>> + Send;
     fn list_menu(&self) -> impl Future<Output = Result<Vec<MenuTree>, Error>> + Send;
     fn create_role(
         &self,
@@ -47,6 +51,8 @@ pub trait SysService: Clone + Send + Sync + 'static {
 }
 
 pub trait SysRepository: Clone + Send + Sync + 'static {
+    fn get_account_by_id(&self, id: i64) -> impl Future<Output = Result<Account, Error>> + Send;
+
     fn list_menu_by_role_id(
         &self,
         role_id: i64,

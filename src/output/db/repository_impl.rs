@@ -32,6 +32,18 @@ impl SysRepository for Db {
         Ok(role)
     }
 
+    async fn get_account_by_id(&self, id: i64) -> Result<Account, Error> {
+        let mut tx =
+            self.pool.begin().await.change_context_lazy(|| {
+                Error::Message("failed to begin transaction".to_string())
+            })?;
+        let account = self.fetch_account_by_id(&mut tx, id).await?;
+        tx.commit()
+            .await
+            .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
+        Ok(account)
+    }
+
     async fn list_menu_by_role_id(&self, role_id: i64) -> Result<Vec<MenuTree>, Error> {
         let mut tx =
             self.pool.begin().await.change_context_lazy(|| {

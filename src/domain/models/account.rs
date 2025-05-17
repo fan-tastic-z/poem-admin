@@ -3,7 +3,7 @@ use nutype::nutype;
 use serde::Serialize;
 use thiserror::Error;
 
-use super::{organization::OrganizationName, role::RoleName};
+use super::{menu::MenuTree, organization::OrganizationName, role::RoleName};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, sqlx::FromRow)]
 pub struct Account {
@@ -90,3 +90,15 @@ fn valid_user_email(email: &str) -> Result<(), AccountEmailError> {
     )
 )]
 pub struct AccountPassword(String);
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CurrentAccountResponseData {
+    pub account: Account,
+    pub menus: Vec<MenuTree>,
+}
+
+impl CurrentAccountResponseData {
+    pub fn new(account: Account, menus: Vec<MenuTree>) -> Self {
+        Self { account, menus }
+    }
+}

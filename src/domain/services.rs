@@ -2,7 +2,7 @@ use crate::{domain::ports::SysRepository, errors::Error};
 
 use super::{
     models::{
-        account::{Account, CreateAccountRequest},
+        account::{Account, CreateAccountRequest, CurrentAccountResponseData},
         auth::LoginRequest,
         menu::MenuTree,
         organization::{CreateOrganizationRequest, OrganizationLimitType},
@@ -36,6 +36,21 @@ impl<R> SysService for Service<R>
 where
     R: SysRepository,
 {
+    async fn current_account(
+        &self,
+        current_user_id: i64,
+    ) -> Result<CurrentAccountResponseData, Error> {
+        let account = self.repo.get_account_by_id(current_user_id).await?;
+        self.repo
+            .check_organization_user_creation_permission(
+                current_user_id,
+                account.organization_id,
+                OrganizationLimitType::FirstLevel,
+            )
+            .await?;
+        let menus = self.repo.list_menu_by_role_id(account.role_id).await?;
+        Ok(CurrentAccountResponseData::new(account, menus))
+    }
     async fn get_role(&self, req: &GetRoleRequest) -> Result<GetRoleResponseData, Error> {
         let role = self.repo.get_role_by_id(req.id).await?;
         let menus = self.repo.list_menu_by_role_id(req.id).await?;
