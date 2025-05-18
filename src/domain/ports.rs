@@ -5,7 +5,9 @@ use super::models::{
     account::{Account, CreateAccountRequest, CurrentAccountResponseData},
     auth::LoginRequest,
     menu::MenuTree,
-    organization::{CreateOrganizationRequest, Organization, OrganizationLimitType},
+    organization::{
+        CreateOrganizationRequest, Organization, OrganizationLimitType, OrganizationTree,
+    },
     page_utils::PageFilter,
     role::{
         CreateRoleRequest, GetRoleRequest, GetRoleResponseData, ListRoleResponseData, Role,
@@ -15,6 +17,11 @@ use super::models::{
 use error_stack::Result;
 
 pub trait SysService: Clone + Send + Sync + 'static {
+    fn organization_tree(
+        &self,
+        current_user_id: i64,
+        limit_type: OrganizationLimitType,
+    ) -> impl Future<Output = Result<Vec<OrganizationTree>, Error>> + Send;
     fn current_account(
         &self,
         current_user_id: i64,
@@ -51,6 +58,7 @@ pub trait SysService: Clone + Send + Sync + 'static {
 }
 
 pub trait SysRepository: Clone + Send + Sync + 'static {
+    fn all_organizations(&self) -> impl Future<Output = Result<Vec<Organization>, Error>> + Send;
     fn get_account_by_id(&self, id: i64) -> impl Future<Output = Result<Account, Error>> + Send;
 
     fn list_menu_by_role_id(

@@ -9,8 +9,12 @@ use thiserror::Error;
 use crate::{
     cli::Ctx,
     domain::{
-        models::organization::{
-            CreateOrganizationRequest, OrganizationName, OrganizationNameError,
+        models::{
+            extension_data::ExtensionData,
+            organization::{
+                CreateOrganizationRequest, OrganizationLimitType, OrganizationName,
+                OrganizationNameError, OrganizationTree,
+            },
         },
         ports::SysService,
     },
@@ -73,4 +77,33 @@ pub async fn create_organization<S: SysService + Send + Sync + 'static>(
         .await
         .map_err(ApiError::from)
         .map(|id| ApiSuccess::new(StatusCode::CREATED, CreaterganizationResponseData { id }))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct OrganizationTreeHttpRequestBody {
+    pub limit_type: OrganizationLimitType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct OrganizationTreeResponseData {
+    pub organizations: Vec<OrganizationTree>,
+}
+
+#[handler]
+pub async fn organization_tree<S: SysService + Send + Sync + 'static>(
+    state: Data<&Ctx<S>>,
+    extension_data: Data<&ExtensionData>,
+    Json(body): Json<OrganizationTreeHttpRequestBody>,
+) -> Result<ApiSuccess<OrganizationTreeResponseData>, ApiError> {
+    state
+        .sys_service
+        .organization_tree(extension_data.user_id, body.limit_type)
+        .await
+        .map_err(ApiError::from)
+        .map(|organizations| {
+            ApiSuccess::new(
+                StatusCode::OK,
+                OrganizationTreeResponseData { organizations },
+            )
+        })
 }

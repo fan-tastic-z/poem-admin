@@ -20,6 +20,18 @@ use crate::{
 use super::db::Db;
 
 impl SysRepository for Db {
+    async fn all_organizations(&self) -> Result<Vec<Organization>, Error> {
+        let mut tx =
+            self.pool.begin().await.change_context_lazy(|| {
+                Error::Message("failed to begin transaction".to_string())
+            })?;
+        let organizations = self.all_organizations(&mut tx).await?;
+        tx.commit()
+            .await
+            .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
+        Ok(organizations)
+    }
+
     async fn get_role_by_id(&self, id: i64) -> Result<Role, Error> {
         let mut tx =
             self.pool.begin().await.change_context_lazy(|| {

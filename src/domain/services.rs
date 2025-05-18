@@ -1,11 +1,20 @@
-use crate::{domain::ports::SysRepository, errors::Error};
+use crate::{
+    domain::{
+        models::organization::{all_tree, first_level_tree},
+        ports::SysRepository,
+    },
+    errors::Error,
+};
 
 use super::{
     models::{
         account::{Account, CreateAccountRequest, CurrentAccountResponseData},
         auth::LoginRequest,
         menu::MenuTree,
-        organization::{CreateOrganizationRequest, OrganizationLimitType},
+        organization::{
+            CreateOrganizationRequest, OrganizationLimitType, OrganizationTree,
+            children_organization_tree,
+        },
         page_utils::PageFilter,
         role::{
             CreateRoleRequest, GetRoleRequest, GetRoleResponseData, ListRoleResponseData, RoleName,
@@ -36,6 +45,37 @@ impl<R> SysService for Service<R>
 where
     R: SysRepository,
 {
+    async fn organization_tree(
+        &self,
+        current_user_id: i64,
+        limit_type: OrganizationLimitType,
+    ) -> Result<Vec<OrganizationTree>, Error> {
+        let organizations = self.repo.all_organizations().await?;
+        let account = self.repo.get_account_by_id(current_user_id).await?;
+        if limit_type == OrganizationLimitType::Root {
+            return Ok(vec![first_level_tree(
+                &organizations,
+                account.organization_id,
+                account.organization_id,
+            )]);
+        }
+        if account.organization_id == -1 {
+            return Ok(all_tree(&organizations));
+        }
+        if limit_type == OrganizationLimitType::FirstLevel {
+            return Ok(vec![first_level_tree(
+                &organizations,
+                account.organization_id,
+                account.organization_id,
+            )]);
+        }
+
+        return Ok(children_organization_tree(
+            &organizations,
+            account.organization_id,
+        ));
+    }
+
     async fn current_account(
         &self,
         current_user_id: i64,

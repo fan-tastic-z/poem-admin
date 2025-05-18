@@ -138,9 +138,14 @@ fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
                         )
                         .at("/:id/detail", get(role::get_role::<S>::default())),
                 )
-                .at(
+                .nest(
                     "/organizations",
-                    post(organization::create_organization::<S>::default()),
+                    Route::new()
+                        .at(
+                            "/tree",
+                            post(organization::organization_tree::<S>::default()),
+                        )
+                        .at("/", post(organization::create_organization::<S>::default())),
                 )
                 .with(AuthMiddleware::<S>::default()),
         )
