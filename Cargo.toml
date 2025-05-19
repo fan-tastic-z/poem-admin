@@ -45,6 +45,7 @@ sqlx = { version = "0.8.5", features = [
     "migrate",
     "chrono",
 ] }
+sqlx-adapter = { version = "1.7.0", features = ["postgres", "runtime-tokio"] }
 thiserror = "2.0.12"
 tokio = { version = "1.45.0", features = ["rt-multi-thread", "macros"] }
 toml_edit = { version = "0.22.26", features = ["serde"] }

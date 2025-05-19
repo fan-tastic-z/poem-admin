@@ -13,6 +13,7 @@ use super::models::{
         CreateRoleRequest, GetRoleRequest, GetRoleResponseData, ListRoleResponseData, Role,
         RoleName,
     },
+    route::{RouteMethod, RoutePath},
 };
 use error_stack::Result;
 
@@ -55,9 +56,21 @@ pub trait SysService: Clone + Send + Sync + 'static {
         &self,
         req: &GetRoleRequest,
     ) -> impl Future<Output = Result<GetRoleResponseData, Error>> + Send;
+    fn check_permission(
+        &self,
+        user_id: i64,
+        path: &RoutePath,
+        method: &RouteMethod,
+    ) -> impl Future<Output = Result<bool, Error>> + Send;
 }
 
 pub trait SysRepository: Clone + Send + Sync + 'static {
+    fn check_permission(
+        &self,
+        user_id: i64,
+        path: &RoutePath,
+        method: &RouteMethod,
+    ) -> impl Future<Output = Result<bool, Error>> + Send;
     fn all_organizations(&self) -> impl Future<Output = Result<Vec<Organization>, Error>> + Send;
     fn get_account_by_id(&self, id: i64) -> impl Future<Output = Result<Account, Error>> + Send;
 

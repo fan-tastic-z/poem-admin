@@ -19,6 +19,7 @@ use super::{
         role::{
             CreateRoleRequest, GetRoleRequest, GetRoleResponseData, ListRoleResponseData, RoleName,
         },
+        route::{RouteMethod, RoutePath},
     },
     ports::SysService,
 };
@@ -45,6 +46,16 @@ impl<R> SysService for Service<R>
 where
     R: SysRepository,
 {
+    async fn check_permission(
+        &self,
+        user_id: i64,
+        path: &RoutePath,
+        method: &RouteMethod,
+    ) -> Result<bool, Error> {
+        let res = self.repo.check_permission(user_id, path, method).await?;
+        Ok(res)
+    }
+
     async fn organization_tree(
         &self,
         current_user_id: i64,

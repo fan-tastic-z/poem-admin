@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     handlers::{account, health::health, login, menu, organization, role},
-    middleware::auth::AuthMiddleware,
+    middleware::{auth::AuthMiddleware, permission::PermissionMiddleware},
 };
 
 pub(crate) type ServerFuture<T> = runtime::JoinHandle<Result<T, io::Error>>;
@@ -147,6 +147,7 @@ fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
                         )
                         .at("/", post(organization::create_organization::<S>::default())),
                 )
+                .with(PermissionMiddleware::<S>::default())
                 .with(AuthMiddleware::<S>::default()),
         )
 }

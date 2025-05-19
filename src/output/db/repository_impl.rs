@@ -10,6 +10,7 @@ use crate::{
             organization::{CreateOrganizationRequest, Organization, OrganizationLimitType},
             page_utils::PageFilter,
             role::{CreateRoleRequest, ListRoleResponseData, Role, RoleName},
+            route::{RouteMethod, RoutePath},
         },
         ports::SysRepository,
     },
@@ -20,6 +21,19 @@ use crate::{
 use super::db::Db;
 
 impl SysRepository for Db {
+    async fn check_permission(
+        &self,
+        user_id: i64,
+        path: &RoutePath,
+        method: &RouteMethod,
+    ) -> Result<bool, Error> {
+        let res = self
+            .enforcer
+            .check_permission(user_id, path, method)
+            .await?;
+        Ok(res)
+    }
+
     async fn all_organizations(&self) -> Result<Vec<Organization>, Error> {
         let mut tx =
             self.pool.begin().await.change_context_lazy(|| {
@@ -223,6 +237,10 @@ impl SysRepository for Db {
             return Err(Error::BadRequest("account already exists".to_string()).into());
         }
         let id = self.save_account(&mut tx, req).await?;
+        self.enforcer
+            .add_role_for_user(&id.to_string(), &req.role_id.to_string())
+            .await
+            .change_context_lazy(|| Error::Message("failed to add casbin role".to_string()))?;
         tx.commit()
             .await
             .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
@@ -304,6 +322,31 @@ impl SysRepository for Db {
         self.save_role_menus(&mut tx, id, req.name.as_ref(), req.menus.as_ref())
             .await
             .change_context_lazy(|| Error::Message("failed to save role menus".to_string()))?;
+
+        // 获取所有req.menus的menu_id,根据menu_id查询所有的route,并根据name+method去重
+        let menu_ids = req.menus.iter().map(|m| m.menu_id).collect::<Vec<i64>>();
+        let routes = self
+            .filter_route_by_menu_ids(&mut tx, menu_ids)
+            .await
+            .change_context_lazy(|| Error::Message("failed to filter routes".to_string()))?;
+
+        // Deduplicate routes by name+method and create permissions vector
+        let permissions = routes
+            .iter()
+            .map(|r| format!("{}{}", r.name, r.method))
+            .collect::<Vec<String>>()
+            .into_iter()
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .map(|p| vec![p])
+            .collect::<Vec<Vec<String>>>();
+
+        self.enforcer
+            .add_permissions_for_role(&id.to_string(), permissions)
+            .await
+            .change_context_lazy(|| {
+                Error::Message("failed to add casbin permissions".to_string())
+            })?;
 
         tx.commit()
             .await

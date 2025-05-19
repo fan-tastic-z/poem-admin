@@ -6,3 +6,4 @@ pub mod organization;
 pub mod page_utils;
 pub mod role;
 pub mod role_menu;
+pub mod route;
