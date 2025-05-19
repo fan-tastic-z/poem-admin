@@ -330,15 +330,19 @@ impl SysRepository for Db {
             .await
             .change_context_lazy(|| Error::Message("failed to filter routes".to_string()))?;
 
-        // Deduplicate routes by name+method and create permissions vector
+        // Create permissions vector with unique route name and method pairs
+        // Each permission is a Vec containing [route_name, route_method]
+        let mut permissions_set = std::collections::HashSet::new();
         let permissions = routes
             .iter()
-            .map(|r| format!("{}{}", r.name, r.method))
-            .collect::<Vec<String>>()
-            .into_iter()
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .map(|p| vec![p])
+            .filter_map(|r| {
+                let pair = (r.name.to_string(), r.method.to_string());
+                if permissions_set.insert(pair.clone()) {
+                    Some(vec![pair.0, pair.1])
+                } else {
+                    None
+                }
+            })
             .collect::<Vec<Vec<String>>>();
 
         self.enforcer
