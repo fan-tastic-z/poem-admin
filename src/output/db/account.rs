@@ -1,8 +1,11 @@
 use error_stack::{Result, ResultExt};
-use sqlx::{Postgres, Row, Transaction};
+use sqlx::{Postgres, QueryBuilder, Row, Transaction};
 
 use crate::{
-    domain::models::account::{Account, AccountName, AccountPassword, CreateAccountRequest},
+    domain::models::{
+        account::{Account, AccountName, AccountPassword, CreateAccountRequest},
+        page_utils::PageFilter,
+    },
     errors::Error,
     utils::password_hash::compute_password_hash,
 };
@@ -10,6 +13,101 @@ use crate::{
 use super::db::Db;
 
 impl Db {
+    pub async fn filter_account(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        account_name: Option<&AccountName>,
+        organization_id: Option<i64>,
+        first_level_organization_ids: &Vec<i64>,
+        page_filter: &PageFilter,
+    ) -> Result<Vec<Account>, Error> {
+        let mut query_builder = QueryBuilder::new(
+            r#"
+            SELECT
+                id,
+                name,
+                password,
+                email,
+                phone,
+                is_deletable,
+                organization_id,
+                organization_name,
+                role_id,
+                role_name
+            FROM account
+            "#,
+        );
+
+        // Build WHERE conditions based on the requirements
+        if let Some(name) = account_name {
+            query_builder.push(" WHERE name LIKE ");
+            query_builder.push_bind(format!("%{}%", name.as_ref()));
+        } else {
+            query_builder.push(" WHERE organization_id = ");
+            query_builder.push_bind(organization_id);
+        }
+
+        if !first_level_organization_ids.is_empty() {
+            query_builder.push(" AND organization_id = ANY(");
+            query_builder.push_bind(first_level_organization_ids);
+            query_builder.push(")");
+        }
+
+        let page_no = page_filter.page_no().as_ref();
+        let page_size = page_filter.page_size().as_ref();
+
+        let offset = (page_no - 1) * page_size;
+        query_builder.push(" LIMIT ");
+        query_builder.push_bind(page_size);
+        query_builder.push(" OFFSET ");
+        query_builder.push_bind(offset);
+
+        let accounts = query_builder
+            .build_query_as::<Account>()
+            .fetch_all(tx.as_mut())
+            .await
+            .change_context_lazy(|| Error::Message("failed to filter accounts".to_string()))?;
+
+        Ok(accounts)
+    }
+
+    pub async fn filter_account_count(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        account_name: Option<&AccountName>,
+        organization_id: Option<i64>,
+        first_level_organization_ids: &Vec<i64>,
+    ) -> Result<i64, Error> {
+        let mut query_builder = QueryBuilder::new(
+            r#"
+            SELECT COUNT(id) FROM account
+            "#,
+        );
+
+        // Build WHERE conditions based on the requirements
+        if let Some(name) = account_name {
+            query_builder.push(" WHERE name LIKE ");
+            query_builder.push_bind(format!("%{}%", name.as_ref()));
+        } else {
+            query_builder.push(" WHERE organization_id = ");
+            query_builder.push_bind(organization_id);
+        }
+
+        if !first_level_organization_ids.is_empty() {
+            query_builder.push(" AND organization_id = ANY(");
+            query_builder.push_bind(first_level_organization_ids);
+            query_builder.push(")");
+        }
+
+        let count = query_builder
+            .build()
+            .fetch_one(tx.as_mut())
+            .await
+            .change_context_lazy(|| Error::Message("failed to filter account count".to_string()))?;
+
+        Ok(count.get::<i64, _>("count"))
+    }
+
     pub async fn fetch_account_by_id(
         &self,
         tx: &mut Transaction<'_, Postgres>,
@@ -22,6 +120,8 @@ impl Db {
             name,
             password,
             email,
+            phone,
+            is_deletable,
             organization_id,
             organization_name,
             role_id,
@@ -47,6 +147,8 @@ impl Db {
             name,
             password,
             email,
+            phone,
+            is_deletable,
             organization_id,
             organization_name,
             role_id,

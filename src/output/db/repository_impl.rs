@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use crate::{
     domain::{
         models::{
-            account::{Account, CreateAccountRequest},
+            account::{Account, AccountName, CreateAccountRequest},
             auth::LoginRequest,
             menu::{MenuTree, children_menu_tree},
             organization::{CreateOrganizationRequest, Organization, OrganizationLimitType},
@@ -21,6 +21,56 @@ use crate::{
 use super::db::Db;
 
 impl SysRepository for Db {
+    async fn count_account(
+        &self,
+        account_name: Option<&AccountName>,
+        organization_id: Option<i64>,
+        first_level_organization_ids: &Vec<i64>,
+    ) -> Result<i64, Error> {
+        let mut tx =
+            self.pool.begin().await.change_context_lazy(|| {
+                Error::Message("failed to begin transaction".to_string())
+            })?;
+        let total = self
+            .filter_account_count(
+                &mut tx,
+                account_name,
+                organization_id,
+                first_level_organization_ids,
+            )
+            .await?;
+        tx.commit()
+            .await
+            .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
+        Ok(total)
+    }
+
+    async fn list_account(
+        &self,
+        account_name: Option<&AccountName>,
+        organization_id: Option<i64>,
+        first_level_organization_ids: &Vec<i64>,
+        page_filter: &PageFilter,
+    ) -> Result<Vec<Account>, Error> {
+        let mut tx =
+            self.pool.begin().await.change_context_lazy(|| {
+                Error::Message("failed to begin transaction".to_string())
+            })?;
+        let account_list = self
+            .filter_account(
+                &mut tx,
+                account_name,
+                organization_id,
+                first_level_organization_ids,
+                page_filter,
+            )
+            .await?;
+        tx.commit()
+            .await
+            .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
+        Ok(account_list)
+    }
+
     async fn check_permission(
         &self,
         user_id: i64,

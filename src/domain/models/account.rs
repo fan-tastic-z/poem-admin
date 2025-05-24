@@ -3,7 +3,9 @@ use nutype::nutype;
 use serde::Serialize;
 use thiserror::Error;
 
-use super::{menu::MenuTree, organization::OrganizationName, role::RoleName};
+use super::{
+    menu::MenuTree, organization::OrganizationName, page_utils::PageFilter, role::RoleName,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, sqlx::FromRow)]
 pub struct Account {
@@ -15,6 +17,8 @@ pub struct Account {
     pub organization_name: String,
     pub role_id: i64,
     pub role_name: String,
+    pub phone: Option<String>,
+    pub is_deletable: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -100,5 +104,64 @@ pub struct CurrentAccountResponseData {
 impl CurrentAccountResponseData {
     pub fn new(account: Account, menus: Vec<MenuTree>) -> Self {
         Self { account, menus }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ListAccountRequest {
+    pub account_name: Option<AccountName>,
+    pub page_filter: PageFilter,
+    pub current_user_id: i64,
+    pub organization_id: Option<i64>,
+}
+
+impl ListAccountRequest {
+    pub fn new(
+        account_name: Option<AccountName>,
+        page_filter: PageFilter,
+        current_user_id: i64,
+        organization_id: Option<i64>,
+    ) -> Self {
+        Self {
+            account_name,
+            page_filter,
+            current_user_id,
+            organization_id,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ListAccountResponseData {
+    pub total: i64,
+    pub data: Vec<AcountData>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+pub struct AcountData {
+    pub id: i64,
+    pub name: String,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub is_deletable: bool,
+    pub is_authorized: bool,
+}
+
+impl AcountData {
+    pub fn new(account: &Account) -> Self {
+        Self {
+            id: account.id,
+            name: account.name.clone(),
+            phone: account.phone.clone(),
+            email: account.email.clone(),
+            is_deletable: account.is_deletable,
+            is_authorized: false,
+        }
+    }
+}
+
+impl ListAccountResponseData {
+    pub fn new(total: i64, data: Vec<AcountData>) -> Self {
+        Self { total, data }
     }
 }

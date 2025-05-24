@@ -1,2 +1,34 @@
 /target
-logs
+
+# By Default, Ignore any .*, except .gitignore
+.*
+!.gitignore
+!.gitattributes
+!.rustfmt.toml
+!.github
+!.pre-commit-config.yaml
+
+
+
+# -- Rust
+# For .cargo/config.toml
+!.cargo/
+target/
+
+
+# -- Safety net
+dist/
+__pycache__/
+node_modules/
+npm-debug.log
+report.*.json
+
+*.parquet
+*.map
+*.zip
+*.gz
+*.tar
+*.tgz
+
+# logs
+logs/

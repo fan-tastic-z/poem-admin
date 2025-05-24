@@ -1,7 +1,7 @@
 use poem::{
     handler,
     http::StatusCode,
-    web::{Data, Json},
+    web::{Data, Json, Query},
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -12,11 +12,13 @@ use crate::{
         models::{
             account::{
                 AccountEmail, AccountEmailError, AccountName, AccountNameError, AccountPassword,
-                AccountPasswordError, CreateAccountRequest, CurrentAccountResponseData,
+                AccountPasswordError, AcountData, CreateAccountRequest, CurrentAccountResponseData,
+                ListAccountRequest, ListAccountResponseData,
             },
             extension_data::ExtensionData,
             menu::MenuTree,
             organization::{OrganizationName, OrganizationNameError},
+            page_utils::{PageFilter, PageNo, PageNoError, PageSize, PageSizeError},
             role::{RoleName, RoleNameError},
         },
         ports::SysService,
@@ -150,6 +152,92 @@ pub async fn current_account<S: SysService + Send + Sync + 'static>(
     state
         .sys_service
         .current_account(extension_data.user_id)
+        .await
+        .map_err(ApiError::from)
+        .map(|data| ApiSuccess::new(StatusCode::OK, data.into()))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ListAccountHttpRequestBody {
+    pub account_name: Option<String>,
+    pub page_no: i32,
+    pub page_size: i32,
+    pub organization_id: Option<i64>,
+}
+
+impl ListAccountHttpRequestBody {
+    pub fn try_into_domain(
+        self,
+        current_user_id: i64,
+    ) -> Result<ListAccountRequest, ParseListAccountHttpRequestBodyError> {
+        let account_name = self
+            .account_name
+            .map(|n| AccountName::try_new(n))
+            .transpose()?;
+        let page_no = PageNo::try_new(self.page_no)?;
+        let page_size = PageSize::try_new(self.page_size)?;
+        let page_filter = PageFilter::new(page_no, page_size);
+        Ok(ListAccountRequest::new(
+            account_name,
+            page_filter,
+            current_user_id,
+            self.organization_id,
+        ))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ListAccountHttpResponseData {
+    pub total: i64,
+    pub data: Vec<AcountData>,
+}
+
+impl From<ListAccountResponseData> for ListAccountHttpResponseData {
+    fn from(data: ListAccountResponseData) -> Self {
+        Self {
+            total: data.total,
+            data: data.data,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Error)]
+pub enum ParseListAccountHttpRequestBodyError {
+    #[error(transparent)]
+    AccountName(#[from] AccountNameError),
+    #[error(transparent)]
+    PageNo(#[from] PageNoError),
+    #[error(transparent)]
+    PageSize(#[from] PageSizeError),
+}
+
+impl From<ParseListAccountHttpRequestBodyError> for ApiError {
+    fn from(e: ParseListAccountHttpRequestBodyError) -> Self {
+        let message = match e {
+            ParseListAccountHttpRequestBodyError::AccountName(e) => {
+                format!("Account name is invalid: {}", e.to_string())
+            }
+            ParseListAccountHttpRequestBodyError::PageNo(e) => {
+                format!("Page no is invalid: {}", e.to_string())
+            }
+            ParseListAccountHttpRequestBodyError::PageSize(e) => {
+                format!("Page size is invalid: {}", e.to_string())
+            }
+        };
+        ApiError::UnprocessableEntity(message)
+    }
+}
+
+#[handler]
+pub async fn list_account<S: SysService + Send + Sync + 'static>(
+    state: Data<&Ctx<S>>,
+    extension_data: Data<&ExtensionData>,
+    Query(body): Query<ListAccountHttpRequestBody>,
+) -> Result<ApiSuccess<ListAccountHttpResponseData>, ApiError> {
+    let req = body.try_into_domain(extension_data.user_id)?;
+    state
+        .sys_service
+        .list_account(&req)
         .await
         .map_err(ApiError::from)
         .map(|data| ApiSuccess::new(StatusCode::OK, data.into()))

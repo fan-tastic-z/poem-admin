@@ -8,7 +8,10 @@ use crate::{
 
 use super::{
     models::{
-        account::{Account, CreateAccountRequest, CurrentAccountResponseData},
+        account::{
+            Account, AcountData, CreateAccountRequest, CurrentAccountResponseData,
+            ListAccountRequest, ListAccountResponseData,
+        },
         auth::LoginRequest,
         menu::MenuTree,
         organization::{
@@ -46,6 +49,62 @@ impl<R> SysService for Service<R>
 where
     R: SysRepository,
 {
+    async fn list_account(
+        &self,
+        req: &ListAccountRequest,
+    ) -> Result<ListAccountResponseData, Error> {
+        let current_account = self.repo.get_account_by_id(req.current_user_id).await?;
+        let is_admin = current_account.id == 1;
+        let organizations = self.repo.all_organizations().await?;
+        let organization_first_level = self
+            .repo
+            .list_origanization_by_id(
+                current_account.organization_id,
+                is_admin,
+                OrganizationLimitType::FirstLevel,
+                organizations.clone(),
+            )
+            .await?;
+        let organization_sub_include = self
+            .repo
+            .list_origanization_by_id(
+                current_account.organization_id,
+                is_admin,
+                OrganizationLimitType::SubOrganizationIncludeSelf,
+                organizations,
+            )
+            .await?;
+        let account_list = self
+            .repo
+            .list_account(
+                req.account_name.as_ref(),
+                req.organization_id,
+                &organization_first_level,
+                &req.page_filter,
+            )
+            .await?;
+        let total = self
+            .repo
+            .count_account(
+                req.account_name.as_ref(),
+                req.organization_id,
+                &organization_first_level,
+            )
+            .await?;
+        let account_data_list = account_list
+            .iter()
+            .map(|account| {
+                let mut a = AcountData::new(&account);
+                if organization_sub_include.contains(&account.organization_id)
+                    || account.id == current_account.id
+                {
+                    a.is_authorized = true;
+                }
+                a
+            })
+            .collect();
+        Ok(ListAccountResponseData::new(total, account_data_list))
+    }
     async fn check_permission(
         &self,
         user_id: i64,
