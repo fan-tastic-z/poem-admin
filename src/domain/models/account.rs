@@ -165,3 +165,30 @@ impl ListAccountResponseData {
         Self { total, data }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GetAccountRequest {
+    pub id: i64,
+    pub current_user_id: i64,
+}
+
+impl GetAccountRequest {
+    pub fn new(id: i64, current_user_id: i64) -> Self {
+        Self {
+            id,
+            current_user_id,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GetAccountResponseData {
+    pub account: Account,
+    pub menus: Vec<MenuTree>,
+}
+
+impl GetAccountResponseData {
+    pub fn new(account: Account, menus: Vec<MenuTree>) -> Self {
+        Self { account, menus }
+    }
+}

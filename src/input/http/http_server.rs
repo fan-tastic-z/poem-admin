@@ -129,7 +129,8 @@ fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
                             "/",
                             post(account::create_account::<S>::default())
                                 .get(account::list_account::<S>::default()),
-                        ),
+                        )
+                        .at("/:id/detail", get(account::get_account::<S>::default())),
                 )
                 .at("/menus", get(menu::list_menu::<S>::default()))
                 .nest(

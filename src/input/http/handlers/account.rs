@@ -1,7 +1,7 @@
 use poem::{
     handler,
     http::StatusCode,
-    web::{Data, Json, Query},
+    web::{Data, Json, Path, Query},
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -13,7 +13,8 @@ use crate::{
             account::{
                 AccountEmail, AccountEmailError, AccountName, AccountNameError, AccountPassword,
                 AccountPasswordError, AcountData, CreateAccountRequest, CurrentAccountResponseData,
-                ListAccountRequest, ListAccountResponseData,
+                GetAccountRequest, GetAccountResponseData, ListAccountRequest,
+                ListAccountResponseData,
             },
             extension_data::ExtensionData,
             menu::MenuTree,
@@ -238,6 +239,61 @@ pub async fn list_account<S: SysService + Send + Sync + 'static>(
     state
         .sys_service
         .list_account(&req)
+        .await
+        .map_err(ApiError::from)
+        .map(|data| ApiSuccess::new(StatusCode::OK, data.into()))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct GetAccountHttpRequestBody {
+    pub id: i64,
+}
+
+impl GetAccountHttpRequestBody {
+    pub fn into_domain(self, current_user_id: i64) -> GetAccountRequest {
+        GetAccountRequest::new(self.id, current_user_id)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct GetAccountHttpResponseData {
+    pub id: i64,
+    pub name: String,
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    pub organization_id: i64,
+    pub organization_name: String,
+    pub role_id: i64,
+    pub role_name: String,
+    pub menus: Vec<MenuTree>,
+}
+
+impl From<GetAccountResponseData> for GetAccountHttpResponseData {
+    fn from(data: GetAccountResponseData) -> Self {
+        Self {
+            id: data.account.id,
+            name: data.account.name,
+            email: data.account.email,
+            phone: data.account.phone,
+            organization_id: data.account.organization_id,
+            organization_name: data.account.organization_name,
+            role_id: data.account.role_id,
+            role_name: data.account.role_name,
+            menus: data.menus,
+        }
+    }
+}
+
+#[handler]
+pub async fn get_account<S: SysService + Send + Sync + 'static>(
+    state: Data<&Ctx<S>>,
+    extension_data: Data<&ExtensionData>,
+    Path(body): Path<GetAccountHttpRequestBody>,
+) -> Result<ApiSuccess<GetAccountHttpResponseData>, ApiError> {
+    let req = body.into_domain(extension_data.user_id);
+    state
+        .sys_service
+        .get_account(&req)
         .await
         .map_err(ApiError::from)
         .map(|data| ApiSuccess::new(StatusCode::OK, data.into()))

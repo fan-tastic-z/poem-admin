@@ -10,7 +10,7 @@ use super::{
     models::{
         account::{
             Account, AcountData, CreateAccountRequest, CurrentAccountResponseData,
-            ListAccountRequest, ListAccountResponseData,
+            GetAccountRequest, GetAccountResponseData, ListAccountRequest, ListAccountResponseData,
         },
         auth::LoginRequest,
         menu::MenuTree,
@@ -49,6 +49,18 @@ impl<R> SysService for Service<R>
 where
     R: SysRepository,
 {
+    async fn get_account(&self, req: &GetAccountRequest) -> Result<GetAccountResponseData, Error> {
+        let account = self.repo.get_account_by_id(req.id).await?;
+        self.repo
+            .check_organization_user_creation_permission(
+                req.current_user_id,
+                account.organization_id,
+                OrganizationLimitType::FirstLevel,
+            )
+            .await?;
+        let menus = self.repo.list_menu_by_role_id(account.role_id).await?;
+        Ok(GetAccountResponseData::new(account, menus))
+    }
     async fn list_account(
         &self,
         req: &ListAccountRequest,

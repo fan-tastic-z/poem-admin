@@ -3,8 +3,8 @@ use std::future::Future;
 
 use super::models::{
     account::{
-        Account, AccountName, CreateAccountRequest, CurrentAccountResponseData, ListAccountRequest,
-        ListAccountResponseData,
+        Account, AccountName, CreateAccountRequest, CurrentAccountResponseData, GetAccountRequest,
+        GetAccountResponseData, ListAccountRequest, ListAccountResponseData,
     },
     auth::LoginRequest,
     menu::MenuTree,
@@ -70,6 +70,11 @@ pub trait SysService: Clone + Send + Sync + 'static {
         path: &RoutePath,
         method: &RouteMethod,
     ) -> impl Future<Output = Result<bool, Error>> + Send;
+
+    fn get_account(
+        &self,
+        req: &GetAccountRequest,
+    ) -> impl Future<Output = Result<GetAccountResponseData, Error>> + Send;
 }
 
 pub trait SysRepository: Clone + Send + Sync + 'static {
