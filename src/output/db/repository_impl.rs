@@ -7,6 +7,7 @@ use crate::{
             account::{Account, AccountName, CreateAccountRequest},
             auth::LoginRequest,
             menu::{MenuTree, children_menu_tree},
+            operation_log::CreateOperationLogRequest,
             organization::{CreateOrganizationRequest, Organization, OrganizationLimitType},
             page_utils::PageFilter,
             role::{CreateRoleRequest, ListRoleResponseData, Role, RoleName},
@@ -21,6 +22,18 @@ use crate::{
 use super::database::Db;
 
 impl SysRepository for Db {
+    async fn create_operation_log(&self, req: &CreateOperationLogRequest) -> Result<(), Error> {
+        let mut tx =
+            self.pool.begin().await.change_context_lazy(|| {
+                Error::Message("failed to begin transaction".to_string())
+            })?;
+        self.save_operation_log(&mut tx, req).await?;
+        tx.commit()
+            .await
+            .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
+        Ok(())
+    }
+
     async fn count_account(
         &self,
         account_name: Option<&AccountName>,

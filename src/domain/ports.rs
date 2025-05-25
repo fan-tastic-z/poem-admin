@@ -8,6 +8,7 @@ use super::models::{
     },
     auth::LoginRequest,
     menu::MenuTree,
+    operation_log::CreateOperationLogRequest,
     organization::{
         CreateOrganizationRequest, GetOrganizationRequest, GetOrganizationResponseData,
         Organization, OrganizationLimitType, OrganizationTree,
@@ -22,6 +23,10 @@ use super::models::{
 use error_stack::Result;
 
 pub trait SysService: Clone + Send + Sync + 'static {
+    fn create_operation_log(
+        &self,
+        req: &CreateOperationLogRequest,
+    ) -> impl Future<Output = Result<(), Error>> + Send;
     fn list_account(
         &self,
         req: &ListAccountRequest,
@@ -84,6 +89,10 @@ pub trait SysService: Clone + Send + Sync + 'static {
 }
 
 pub trait SysRepository: Clone + Send + Sync + 'static {
+    fn create_operation_log(
+        &self,
+        req: &CreateOperationLogRequest,
+    ) -> impl Future<Output = Result<(), Error>> + Send;
     fn check_permission(
         &self,
         user_id: i64,

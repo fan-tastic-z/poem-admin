@@ -70,9 +70,10 @@ impl CreateAccountRequest {
 #[nutype(
     sanitize(trim, lowercase),
     validate(not_empty, len_char_min = 4, len_char_max = 10),
+    default = "unknown",
     derive(
         Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash, AsRef, Deref, Borrow, TryFrom,
-        Serialize
+        Serialize, Default
     )
 )]
 pub struct AccountName(String);

@@ -14,6 +14,7 @@ use super::{
         },
         auth::LoginRequest,
         menu::MenuTree,
+        operation_log::CreateOperationLogRequest,
         organization::{
             CreateOrganizationRequest, GetOrganizationRequest, GetOrganizationResponseData,
             OrganizationLimitType, OrganizationTree, children_organization_tree,
@@ -49,6 +50,10 @@ impl<R> SysService for Service<R>
 where
     R: SysRepository,
 {
+    async fn create_operation_log(&self, req: &CreateOperationLogRequest) -> Result<(), Error> {
+        self.repo.create_operation_log(req).await?;
+        Ok(())
+    }
     async fn get_organization(
         &self,
         req: &GetOrganizationRequest,

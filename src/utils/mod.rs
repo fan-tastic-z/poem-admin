@@ -1,3 +1,4 @@
+pub mod ip_validator;
 pub mod password_hash;
 pub mod runtime;
 pub mod styled;
