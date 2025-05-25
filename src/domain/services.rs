@@ -84,24 +84,33 @@ where
         let current_account = self.repo.get_account_by_id(req.current_user_id).await?;
         let is_admin = current_account.id == 1;
         let organizations = self.repo.all_organizations().await?;
-        let organization_first_level = self
-            .repo
-            .list_origanization_by_id(
-                current_account.organization_id,
-                is_admin,
-                OrganizationLimitType::FirstLevel,
-                organizations.clone(),
-            )
-            .await?;
-        let organization_sub_include = self
-            .repo
-            .list_origanization_by_id(
-                current_account.organization_id,
-                is_admin,
-                OrganizationLimitType::SubOrganizationIncludeSelf,
-                organizations,
-            )
-            .await?;
+
+        // 如果是超级管理员，返回空的组织限制列表，表示可以访问所有组织
+        let organization_first_level = if is_admin {
+            Vec::new() // 空列表表示无限制
+        } else {
+            self.repo
+                .list_origanization_by_id(
+                    current_account.organization_id,
+                    is_admin,
+                    OrganizationLimitType::FirstLevel,
+                    organizations.clone(),
+                )
+                .await?
+        };
+        // 如果是超级管理员，获取所有组织ID用于授权检查
+        let organization_sub_include = if is_admin {
+            organizations.iter().map(|org| org.id).collect()
+        } else {
+            self.repo
+                .list_origanization_by_id(
+                    current_account.organization_id,
+                    is_admin,
+                    OrganizationLimitType::SubOrganizationIncludeSelf,
+                    organizations,
+                )
+                .await?
+        };
         let account_list = self
             .repo
             .list_account(

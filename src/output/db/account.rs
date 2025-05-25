@@ -39,16 +39,26 @@ impl Db {
         );
 
         // Build WHERE conditions based on the requirements
+        let mut has_where = false;
+
         if let Some(name) = account_name {
             query_builder.push(" WHERE name LIKE ");
             query_builder.push_bind(format!("%{}%", name.as_ref()));
-        } else {
+            has_where = true;
+        } else if let Some(org_id) = organization_id {
             query_builder.push(" WHERE organization_id = ");
-            query_builder.push_bind(organization_id);
+            query_builder.push_bind(org_id);
+            has_where = true;
         }
 
+        // 只有当first_level_organization_ids不为空时才应用组织权限限制
+        // 如果为空，说明是超级管理员，可以访问所有组织
         if !first_level_organization_ids.is_empty() {
-            query_builder.push(" AND organization_id = ANY(");
+            if has_where {
+                query_builder.push(" AND organization_id = ANY(");
+            } else {
+                query_builder.push(" WHERE organization_id = ANY(");
+            }
             query_builder.push_bind(first_level_organization_ids);
             query_builder.push(")");
         }
@@ -85,16 +95,26 @@ impl Db {
         );
 
         // Build WHERE conditions based on the requirements
+        let mut has_where = false;
+
         if let Some(name) = account_name {
             query_builder.push(" WHERE name LIKE ");
             query_builder.push_bind(format!("%{}%", name.as_ref()));
-        } else {
+            has_where = true;
+        } else if let Some(org_id) = organization_id {
             query_builder.push(" WHERE organization_id = ");
-            query_builder.push_bind(organization_id);
+            query_builder.push_bind(org_id);
+            has_where = true;
         }
 
+        // 只有当first_level_organization_ids不为空时才应用组织权限限制
+        // 如果为空，说明是超级管理员，可以访问所有组织
         if !first_level_organization_ids.is_empty() {
-            query_builder.push(" AND organization_id = ANY(");
+            if has_where {
+                query_builder.push(" AND organization_id = ANY(");
+            } else {
+                query_builder.push(" WHERE organization_id = ANY(");
+            }
             query_builder.push_bind(first_level_organization_ids);
             query_builder.push(")");
         }
