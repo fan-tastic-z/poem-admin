@@ -207,3 +207,27 @@ fn tree_dfs_organization(
         })
         .collect()
 }
+
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GetOrganizationRequest {
+    pub id: i64,
+    pub current_user_id: i64,
+}
+
+impl GetOrganizationRequest {
+    pub fn new(id: i64, current_user_id: i64) -> Self {
+        Self { id, current_user_id }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GetOrganizationResponseData {
+    pub organization: Organization,
+}
+
+impl GetOrganizationResponseData {
+    pub fn new(organization: Organization) -> Self {
+        Self { organization }
+    }
+}

@@ -15,8 +15,8 @@ use super::{
         auth::LoginRequest,
         menu::MenuTree,
         organization::{
-            CreateOrganizationRequest, OrganizationLimitType, OrganizationTree,
-            children_organization_tree,
+            CreateOrganizationRequest, GetOrganizationRequest, GetOrganizationResponseData,
+            OrganizationLimitType, OrganizationTree, children_organization_tree,
         },
         page_utils::PageFilter,
         role::{
@@ -49,6 +49,22 @@ impl<R> SysService for Service<R>
 where
     R: SysRepository,
 {
+    async fn get_organization(
+        &self,
+        req: &GetOrganizationRequest,
+    ) -> Result<GetOrganizationResponseData, Error> {
+        self.repo
+            .check_organization_user_creation_permission(
+                req.current_user_id,
+                req.id,
+                OrganizationLimitType::SubOrganization,
+            )
+            .await?;
+        let organization = self.repo.get_organization_by_id(req.id).await?;
+        Ok(GetOrganizationResponseData {
+            organization: organization,
+        })
+    }
     async fn get_account(&self, req: &GetAccountRequest) -> Result<GetAccountResponseData, Error> {
         let account = self.repo.get_account_by_id(req.id).await?;
         self.repo

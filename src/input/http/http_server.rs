@@ -150,7 +150,11 @@ fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
                             "/tree",
                             post(organization::organization_tree::<S>::default()),
                         )
-                        .at("/", post(organization::create_organization::<S>::default())),
+                        .at("/", post(organization::create_organization::<S>::default()))
+                        .at(
+                            "/:id/detail",
+                            get(organization::get_organization::<S>::default()),
+                        ),
                 )
                 .with(PermissionMiddleware::<S>::default())
                 .with(AuthMiddleware::<S>::default()),

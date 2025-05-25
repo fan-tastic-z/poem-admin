@@ -9,7 +9,8 @@ use super::models::{
     auth::LoginRequest,
     menu::MenuTree,
     organization::{
-        CreateOrganizationRequest, Organization, OrganizationLimitType, OrganizationTree,
+        CreateOrganizationRequest, GetOrganizationRequest, GetOrganizationResponseData,
+        Organization, OrganizationLimitType, OrganizationTree,
     },
     page_utils::PageFilter,
     role::{
@@ -75,6 +76,11 @@ pub trait SysService: Clone + Send + Sync + 'static {
         &self,
         req: &GetAccountRequest,
     ) -> impl Future<Output = Result<GetAccountResponseData, Error>> + Send;
+
+    fn get_organization(
+        &self,
+        req: &GetOrganizationRequest,
+    ) -> impl Future<Output = Result<GetOrganizationResponseData, Error>> + Send;
 }
 
 pub trait SysRepository: Clone + Send + Sync + 'static {
@@ -86,6 +92,11 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
     ) -> impl Future<Output = Result<bool, Error>> + Send;
     fn all_organizations(&self) -> impl Future<Output = Result<Vec<Organization>, Error>> + Send;
     fn get_account_by_id(&self, id: i64) -> impl Future<Output = Result<Account, Error>> + Send;
+
+    fn get_organization_by_id(
+        &self,
+        id: i64,
+    ) -> impl Future<Output = Result<Organization, Error>> + Send;
 
     fn list_menu_by_role_id(
         &self,

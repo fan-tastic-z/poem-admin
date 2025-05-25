@@ -1,7 +1,7 @@
 use poem::{
     handler,
     http::StatusCode,
-    web::{Data, Json},
+    web::{Data, Json, Path},
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -12,8 +12,8 @@ use crate::{
         models::{
             extension_data::ExtensionData,
             organization::{
-                CreateOrganizationRequest, OrganizationLimitType, OrganizationName,
-                OrganizationNameError, OrganizationTree,
+                CreateOrganizationRequest, GetOrganizationRequest, GetOrganizationResponseData,
+                OrganizationLimitType, OrganizationName, OrganizationNameError, OrganizationTree,
             },
         },
         ports::SysService,
@@ -106,4 +106,45 @@ pub async fn organization_tree<S: SysService + Send + Sync + 'static>(
                 OrganizationTreeResponseData { organizations },
             )
         })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct GetOrganizationHttpRequestBody {
+    pub id: i64,
+}
+
+impl GetOrganizationHttpRequestBody {
+    pub fn into_domain(self, current_user_id: i64) -> GetOrganizationRequest {
+        GetOrganizationRequest::new(self.id, current_user_id)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct GetOrganizationHttpResponseData {
+    pub id: i64,
+    pub name: String,
+}
+
+impl From<GetOrganizationResponseData> for GetOrganizationHttpResponseData {
+    fn from(data: GetOrganizationResponseData) -> Self {
+        Self {
+            id: data.organization.id,
+            name: data.organization.name,
+        }
+    }
+}
+
+#[handler]
+pub async fn get_organization<S: SysService + Send + Sync + 'static>(
+    state: Data<&Ctx<S>>,
+    extension_data: Data<&ExtensionData>,
+    Path(body): Path<GetOrganizationHttpRequestBody>,
+) -> Result<ApiSuccess<GetOrganizationHttpResponseData>, ApiError> {
+    let req = body.into_domain(extension_data.user_id);
+    state
+        .sys_service
+        .get_organization(&req)
+        .await
+        .map_err(ApiError::from)
+        .map(|data| ApiSuccess::new(StatusCode::OK, data.into()))
 }

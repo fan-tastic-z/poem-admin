@@ -9,6 +9,29 @@ use crate::{
 use super::db::Db;
 
 impl Db {
+    pub async fn fetch_organization_by_id(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        id: i64,
+    ) -> Result<Organization, Error> {
+        let res = sqlx::query_as::<_, Organization>(
+            r#"
+            SELECT
+                id,
+                name,
+                parent_id,
+                parent_name
+            FROM organization
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_one(tx.as_mut())
+        .await
+        .change_context_lazy(|| Error::Message("failed to get organization by id".to_string()))?;
+        Ok(res)
+    }
+
     pub async fn all_organizations(
         &self,
         tx: &mut Transaction<'_, Postgres>,
