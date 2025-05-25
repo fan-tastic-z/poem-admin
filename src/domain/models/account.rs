@@ -1,7 +1,6 @@
 use email_address::EmailAddress;
 use nutype::nutype;
 use serde::Serialize;
-use thiserror::Error;
 
 use super::{
     menu::MenuTree, organization::OrganizationName, page_utils::PageFilter, role::RoleName,
@@ -69,22 +68,10 @@ pub struct AccountName(String);
 
 #[nutype(
     sanitize(trim, lowercase),
-    validate(with=valid_user_email, error=AccountEmailError),
+    validate(predicate = |email| email.is_empty() || EmailAddress::is_valid(email)),
     derive(Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash, AsRef, Deref, Borrow, TryFrom)
 )]
 pub struct AccountEmail(String);
-
-#[derive(Debug, Error, Clone)]
-#[error("invalid email:{0}")]
-pub struct AccountEmailError(String);
-
-fn valid_user_email(email: &str) -> Result<(), AccountEmailError> {
-    let res = EmailAddress::is_valid(email);
-    if res {
-        return Ok(());
-    }
-    return Err(AccountEmailError(email.to_string()));
-}
 
 #[nutype(
     sanitize(trim),
@@ -190,5 +177,48 @@ pub struct GetAccountResponseData {
 impl GetAccountResponseData {
     pub fn new(account: Account, menus: Vec<MenuTree>) -> Self {
         Self { account, menus }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_account_email_empty_is_valid() {
+        // 空字符串应该是有效的
+        let result = AccountEmail::try_new("".to_string());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_account_email_whitespace_becomes_empty() {
+        // 只有空白字符的字符串经过 trim 后变成空字符串，应该是有效的
+        let result = AccountEmail::try_new("   ".to_string());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().as_ref(), "");
+    }
+
+    #[test]
+    fn test_account_email_valid_email() {
+        // 有效的邮箱地址应该通过验证
+        let result = AccountEmail::try_new("test@example.com".to_string());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().as_ref(), "test@example.com");
+    }
+
+    #[test]
+    fn test_account_email_invalid_email() {
+        // 无效的邮箱地址应该失败
+        let result = AccountEmail::try_new("invalid-email".to_string());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_account_email_sanitization() {
+        // 测试清理功能：trim 和 lowercase
+        let result = AccountEmail::try_new("  Test@Example.COM  ".to_string());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().as_ref(), "test@example.com");
     }
 }
