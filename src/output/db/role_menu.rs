@@ -2,7 +2,7 @@ use sqlx::{Postgres, QueryBuilder, Transaction};
 
 use crate::domain::models::{role::CreateRoleMenuRequest, role_menu::RoleMenu};
 
-use super::db::Db;
+use super::database::Db;
 
 impl Db {
     pub async fn save_role_menus(

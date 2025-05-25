@@ -10,7 +10,7 @@ use crate::{
     utils::password_hash::compute_password_hash,
 };
 
-use super::db::Db;
+use super::database::Db;
 
 impl Db {
     pub async fn filter_account(
@@ -18,7 +18,7 @@ impl Db {
         tx: &mut Transaction<'_, Postgres>,
         account_name: Option<&AccountName>,
         organization_id: Option<i64>,
-        first_level_organization_ids: &Vec<i64>,
+        first_level_organization_ids: &[i64],
         page_filter: &PageFilter,
     ) -> Result<Vec<Account>, Error> {
         let mut query_builder = QueryBuilder::new(
@@ -86,7 +86,7 @@ impl Db {
         tx: &mut Transaction<'_, Postgres>,
         account_name: Option<&AccountName>,
         organization_id: Option<i64>,
-        first_level_organization_ids: &Vec<i64>,
+        first_level_organization_ids: &[i64],
     ) -> Result<i64, Error> {
         let mut query_builder = QueryBuilder::new(
             r#"

@@ -18,14 +18,14 @@ use crate::{
     utils::password_hash::verify_password_hash,
 };
 
-use super::db::Db;
+use super::database::Db;
 
 impl SysRepository for Db {
     async fn count_account(
         &self,
         account_name: Option<&AccountName>,
         organization_id: Option<i64>,
-        first_level_organization_ids: &Vec<i64>,
+        first_level_organization_ids: &[i64],
     ) -> Result<i64, Error> {
         let mut tx =
             self.pool.begin().await.change_context_lazy(|| {
@@ -49,7 +49,7 @@ impl SysRepository for Db {
         &self,
         account_name: Option<&AccountName>,
         organization_id: Option<i64>,
-        first_level_organization_ids: &Vec<i64>,
+        first_level_organization_ids: &[i64],
         page_filter: &PageFilter,
     ) -> Result<Vec<Account>, Error> {
         let mut tx =
@@ -203,7 +203,7 @@ impl SysRepository for Db {
                 log::error!("invalid account or password: {}", req.username);
             }
         }
-        return Err(Error::BadRequest("invalid account or password".to_string()).into());
+        Err(Error::BadRequest("invalid account or password".to_string()).into())
     }
 
     async fn check_organization_user_creation_permission(
@@ -228,7 +228,7 @@ impl SysRepository for Db {
         if organization_ids.contains(&target_organization_id) {
             return Ok(());
         }
-        return Err(Error::BadRequest("no permission".to_string()).into());
+        Err(Error::BadRequest("no permission".to_string()).into())
     }
 
     async fn list_origanization_by_id(
@@ -263,26 +263,19 @@ impl SysRepository for Db {
         match limit_type {
             OrganizationLimitType::FirstLevel => {
                 let first_level_id = get_first_level_id(&parent_id_map, target_organization_id);
-                return Ok(list_organization_by_user_contain(
+                Ok(list_organization_by_user_contain(
                     first_level_id,
                     &organization_map,
-                ));
+                ))
             }
-            OrganizationLimitType::SubOrganization => {
-                return Ok(list_organization_by_user(
-                    target_organization_id,
-                    &organization_map,
-                ));
-            }
-            OrganizationLimitType::SubOrganizationIncludeSelf => {
-                return Ok(list_organization_by_user_contain(
-                    target_organization_id,
-                    &organization_map,
-                ));
-            }
-            _ => {
-                return Err(Error::BadRequest("invalid limit type".to_string()).into());
-            }
+            OrganizationLimitType::SubOrganization => Ok(list_organization_by_user(
+                target_organization_id,
+                &organization_map,
+            )),
+            OrganizationLimitType::SubOrganizationIncludeSelf => Ok(
+                list_organization_by_user_contain(target_organization_id, &organization_map),
+            ),
+            _ => Err(Error::BadRequest("invalid limit type".to_string()).into()),
         }
     }
 
@@ -362,10 +355,11 @@ impl SysRepository for Db {
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
-        if let Some(_) = self
+        if (self
             .filter_role_by_name(&mut tx, req.name.as_ref())
             .await
-            .change_context_lazy(|| Error::Message("failed to fetch role".to_string()))?
+            .change_context_lazy(|| Error::Message("failed to fetch role".to_string()))?)
+        .is_some()
         {
             return Err(Error::BadRequest("role already exists".to_string()).into());
         }
@@ -453,7 +447,7 @@ fn get_first_level_id(id_map: &HashMap<i64, i64>, id: i64) -> i64 {
         }
         return get_first_level_id(id_map, *v);
     }
-    return get_first_level_id(id_map, *id_map.get(&id).unwrap());
+    get_first_level_id(id_map, *id_map.get(&id).unwrap())
 }
 
 fn list_organization_by_user_contain(

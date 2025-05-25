@@ -9,7 +9,7 @@ use crate::{
 use super::{
     models::{
         account::{
-            Account, AcountData, CreateAccountRequest, CurrentAccountResponseData,
+            Account, AccountData, CreateAccountRequest, CurrentAccountResponseData,
             GetAccountRequest, GetAccountResponseData, ListAccountRequest, ListAccountResponseData,
         },
         auth::LoginRequest,
@@ -61,9 +61,7 @@ where
             )
             .await?;
         let organization = self.repo.get_organization_by_id(req.id).await?;
-        Ok(GetOrganizationResponseData {
-            organization: organization,
-        })
+        Ok(GetOrganizationResponseData { organization })
     }
     async fn get_account(&self, req: &GetAccountRequest) -> Result<GetAccountResponseData, Error> {
         let account = self.repo.get_account_by_id(req.id).await?;
@@ -131,7 +129,7 @@ where
         let account_data_list = account_list
             .iter()
             .map(|account| {
-                let mut a = AcountData::new(&account);
+                let mut a = AccountData::new(account);
                 if organization_sub_include.contains(&account.organization_id)
                     || account.id == current_account.id
                 {
@@ -177,10 +175,10 @@ where
             )]);
         }
 
-        return Ok(children_organization_tree(
+        Ok(children_organization_tree(
             &organizations,
             account.organization_id,
-        ));
+        ))
     }
 
     async fn current_account(

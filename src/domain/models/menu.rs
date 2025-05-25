@@ -60,10 +60,7 @@ pub fn children_menu_tree<'a>(
     // 构建父节点到子节点的索引
     let mut node_map: HashMap<i64, Vec<&'a Menu>> = HashMap::new();
     for menu in menus {
-        node_map
-            .entry(menu.parent_id)
-            .or_insert_with(Vec::new)
-            .push(menu);
+        node_map.entry(menu.parent_id).or_default().push(menu);
     }
 
     // 找到特定父ID的子节点并构建树

@@ -43,7 +43,7 @@ impl From<ParseCreateOrganizationHttpRequestBodyError> for ApiError {
     fn from(e: ParseCreateOrganizationHttpRequestBodyError) -> Self {
         let message = match e {
             ParseCreateOrganizationHttpRequestBodyError::Name(e) => {
-                format!("Name is invalid: {}", e.to_string())
+                format!("Name is invalid: {}", e)
             }
         };
         Self::UnprocessableEntity(message)

@@ -36,7 +36,7 @@ impl ServerState {
         log::info!("http server is shutting down");
 
         match self.server_fut.await {
-            Ok(_) => log::info!("http server stoped"),
+            Ok(_) => log::info!("http server stopped"),
             Err(err) => log::error!(err:?;"http server failed."),
         }
     }

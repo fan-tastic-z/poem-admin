@@ -12,7 +12,7 @@ use sqlx_adapter::{
 use tokio::sync::RwLock;
 
 use crate::{
-    config::config::Config,
+    config::settings::Config,
     domain::models::route::{RouteMethod, RoutePath},
     errors::Error,
 };

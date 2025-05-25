@@ -1,8 +1,8 @@
 use std::{path::PathBuf, sync::Arc};
 
 use crate::{
-    auth::auth::JWT,
-    config::config::{Config, LoadConfigResult, load_config},
+    auth::jwt::JWT,
+    config::settings::{Config, LoadConfigResult, load_config},
     domain::{
         models::account::{AccountName, AccountPassword},
         ports::SysService,
@@ -10,7 +10,7 @@ use crate::{
     },
     errors::Error,
     input::http::http_server::{self, make_acceptor_and_advertise_addr},
-    output::db::db::Db,
+    output::db::database::Db,
     utils::{
         num_cpus,
         password_hash::compute_password_hash,

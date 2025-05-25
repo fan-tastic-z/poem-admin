@@ -87,10 +87,7 @@ pub fn all_tree(organizations: &[Organization]) -> Vec<OrganizationTree> {
     let mut self_map: HashMap<i64, &Organization> = HashMap::with_capacity(capacity);
 
     organizations.iter().for_each(|node| {
-        node_map
-            .entry(node.parent_id)
-            .or_insert_with(Vec::new)
-            .push(node);
+        node_map.entry(node.parent_id).or_default().push(node);
 
         parent_id_map.insert(node.id, node.parent_id);
         self_map.insert(node.id, node);
@@ -108,10 +105,7 @@ pub fn first_level_tree(organizations: &[Organization], id: i64, mid_id: i64) ->
     let mut self_map: HashMap<i64, &Organization> = HashMap::with_capacity(capacity);
 
     organizations.iter().for_each(|node| {
-        node_map
-            .entry(node.parent_id)
-            .or_insert_with(Vec::new)
-            .push(node);
+        node_map.entry(node.parent_id).or_default().push(node);
 
         parent_id_map.insert(node.id, node.parent_id);
         self_map.insert(node.id, node);
@@ -178,7 +172,7 @@ pub fn children_organization_tree(
             .or_insert_with(Vec::new)
             .push(organization);
     }
-    return tree_dfs_organization(&m, m.get(&parent_id).unwrap_or(&Vec::new()), -1);
+    tree_dfs_organization(&m, m.get(&parent_id).unwrap_or(&Vec::new()), -1)
 }
 
 fn tree_dfs_organization(
@@ -208,7 +202,6 @@ fn tree_dfs_organization(
         .collect()
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GetOrganizationRequest {
     pub id: i64,
@@ -217,7 +210,10 @@ pub struct GetOrganizationRequest {
 
 impl GetOrganizationRequest {
     pub fn new(id: i64, current_user_id: i64) -> Self {
-        Self { id, current_user_id }
+        Self {
+            id,
+            current_user_id,
+        }
     }
 }
 

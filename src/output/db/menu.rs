@@ -3,7 +3,7 @@ use sqlx::{Postgres, Transaction};
 
 use crate::domain::models::menu::Menu;
 
-use super::db::Db;
+use super::database::Db;
 
 impl Db {
     pub async fn list_menu(

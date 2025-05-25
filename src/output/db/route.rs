@@ -3,7 +3,7 @@ use sqlx::{Postgres, Transaction};
 
 use crate::{domain::models::route::Route, errors::Error};
 
-use super::db::Db;
+use super::database::Db;
 
 impl Db {
     pub async fn filter_route_by_menu_ids(

@@ -33,26 +33,37 @@ pub struct CreateAccountRequest {
 }
 
 impl CreateAccountRequest {
+    /// Create a new account request with required fields
     pub fn new(
         name: AccountName,
         password: AccountPassword,
-        email: Option<AccountEmail>,
         organization_id: i64,
         organization_name: OrganizationName,
         role_id: i64,
         role_name: RoleName,
-        is_deletable: bool,
     ) -> Self {
         Self {
             name,
             password,
-            email,
+            email: None,
             organization_id,
             organization_name,
             role_id,
             role_name,
-            is_deletable,
+            is_deletable: true, // 默认可删除
         }
+    }
+
+    /// Set email for the account
+    pub fn with_email(mut self, email: AccountEmail) -> Self {
+        self.email = Some(email);
+        self
+    }
+
+    /// Set whether the account is deletable
+    pub fn with_deletable(mut self, is_deletable: bool) -> Self {
+        self.is_deletable = is_deletable;
+        self
     }
 }
 
@@ -121,11 +132,11 @@ impl ListAccountRequest {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ListAccountResponseData {
     pub total: i64,
-    pub data: Vec<AcountData>,
+    pub data: Vec<AccountData>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-pub struct AcountData {
+pub struct AccountData {
     pub id: i64,
     pub name: String,
     pub phone: Option<String>,
@@ -134,7 +145,7 @@ pub struct AcountData {
     pub is_authorized: bool,
 }
 
-impl AcountData {
+impl AccountData {
     pub fn new(account: &Account) -> Self {
         Self {
             id: account.id,
@@ -148,7 +159,7 @@ impl AcountData {
 }
 
 impl ListAccountResponseData {
-    pub fn new(total: i64, data: Vec<AcountData>) -> Self {
+    pub fn new(total: i64, data: Vec<AccountData>) -> Self {
         Self { total, data }
     }
 }

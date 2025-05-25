@@ -8,7 +8,7 @@ use logforth::{
     layout,
 };
 
-use crate::config::config::TelemetryConfig;
+use crate::config::settings::TelemetryConfig;
 
 use super::runtime::Runtime;
 

@@ -11,10 +11,10 @@ use crate::{
     domain::{
         models::{
             account::{
-                AccountEmail, AccountEmailError, AccountName, AccountNameError, AccountPassword,
-                AccountPasswordError, AcountData, CreateAccountRequest, CurrentAccountResponseData,
-                GetAccountRequest, GetAccountResponseData, ListAccountRequest,
-                ListAccountResponseData,
+                AccountData, AccountEmail, AccountEmailError, AccountName, AccountNameError,
+                AccountPassword, AccountPasswordError, CreateAccountRequest,
+                CurrentAccountResponseData, GetAccountRequest, GetAccountResponseData,
+                ListAccountRequest, ListAccountResponseData,
             },
             extension_data::ExtensionData,
             menu::MenuTree,
@@ -48,16 +48,20 @@ impl CreateAccountHttpRequestBody {
         let email = self.email.map(AccountEmail::try_new).transpose()?;
         let organization_name = OrganizationName::try_new(self.organization_name)?;
         let role_name = RoleName::try_new(self.role_name)?;
-        Ok(CreateAccountRequest::new(
+        let mut request = CreateAccountRequest::new(
             name,
             password,
-            email,
             self.organization_id,
             organization_name,
             self.role_id,
             role_name,
-            true,
-        ))
+        );
+
+        if let Some(email) = email {
+            request = request.with_email(email);
+        }
+
+        Ok(request.with_deletable(true))
     }
 }
 
@@ -79,19 +83,19 @@ impl From<ParseCreateAccountHttpRequestBodyError> for ApiError {
     fn from(e: ParseCreateAccountHttpRequestBodyError) -> Self {
         let message = match e {
             ParseCreateAccountHttpRequestBodyError::Name(e) => {
-                format!("Name is invalid: {}", e.to_string())
+                format!("Name is invalid: {}", e)
             }
             ParseCreateAccountHttpRequestBodyError::Password(e) => {
-                format!("Password is invalid: {}", e.to_string())
+                format!("Password is invalid: {}", e)
             }
             ParseCreateAccountHttpRequestBodyError::Email(e) => {
-                format!("Email is invalid: {}", e.to_string())
+                format!("Email is invalid: {}", e)
             }
             ParseCreateAccountHttpRequestBodyError::OrganizationName(e) => {
-                format!("Organization name is invalid: {}", e.to_string())
+                format!("Organization name is invalid: {}", e)
             }
             ParseCreateAccountHttpRequestBodyError::RoleName(e) => {
-                format!("Role name is invalid: {}", e.to_string())
+                format!("Role name is invalid: {}", e)
             }
         };
         ApiError::UnprocessableEntity(message)
@@ -171,10 +175,7 @@ impl ListAccountHttpRequestBody {
         self,
         current_user_id: i64,
     ) -> Result<ListAccountRequest, ParseListAccountHttpRequestBodyError> {
-        let account_name = self
-            .account_name
-            .map(|n| AccountName::try_new(n))
-            .transpose()?;
+        let account_name = self.account_name.map(AccountName::try_new).transpose()?;
         let page_no = PageNo::try_new(self.page_no)?;
         let page_size = PageSize::try_new(self.page_size)?;
         let page_filter = PageFilter::new(page_no, page_size);
@@ -190,7 +191,7 @@ impl ListAccountHttpRequestBody {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ListAccountHttpResponseData {
     pub total: i64,
-    pub data: Vec<AcountData>,
+    pub data: Vec<AccountData>,
 }
 
 impl From<ListAccountResponseData> for ListAccountHttpResponseData {
@@ -216,13 +217,13 @@ impl From<ParseListAccountHttpRequestBodyError> for ApiError {
     fn from(e: ParseListAccountHttpRequestBodyError) -> Self {
         let message = match e {
             ParseListAccountHttpRequestBodyError::AccountName(e) => {
-                format!("Account name is invalid: {}", e.to_string())
+                format!("Account name is invalid: {}", e)
             }
             ParseListAccountHttpRequestBodyError::PageNo(e) => {
-                format!("Page no is invalid: {}", e.to_string())
+                format!("Page no is invalid: {}", e)
             }
             ParseListAccountHttpRequestBodyError::PageSize(e) => {
-                format!("Page size is invalid: {}", e.to_string())
+                format!("Page size is invalid: {}", e)
             }
         };
         ApiError::UnprocessableEntity(message)

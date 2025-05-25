@@ -45,10 +45,10 @@ impl From<ParseLoginHttpRequestBodyError> for ApiError {
     fn from(e: ParseLoginHttpRequestBodyError) -> Self {
         let message = match e {
             ParseLoginHttpRequestBodyError::Username(e) => {
-                format!("Username is invalid: {}", e.to_string())
+                format!("Username is invalid: {}", e)
             }
             ParseLoginHttpRequestBodyError::Password(e) => {
-                format!("Password is invalid: {}", e.to_string())
+                format!("Password is invalid: {}", e)
             }
         };
         Self::UnprocessableEntity(message)

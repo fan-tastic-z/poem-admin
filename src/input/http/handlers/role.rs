@@ -28,7 +28,7 @@ use crate::{
 pub struct CreateRoleHttpRequestBody {
     pub name: String,
     pub description: Option<String>,
-    pub is_deleteable: bool,
+    pub is_deletable: bool,
     pub menus: Vec<CreateRoleMenu>,
 }
 
@@ -57,13 +57,13 @@ impl From<ParseCreateRoleHttpRequestError> for ApiError {
     fn from(e: ParseCreateRoleHttpRequestError) -> Self {
         let message = match e {
             ParseCreateRoleHttpRequestError::RoleName(e) => {
-                format!("Role name is invalid: {}", e.to_string())
+                format!("Role name is invalid: {}", e)
             }
             ParseCreateRoleHttpRequestError::RoleDescription(e) => {
-                format!("Role description is invalid: {}", e.to_string())
+                format!("Role description is invalid: {}", e)
             }
             ParseCreateRoleHttpRequestError::MenuName(e) => {
-                format!("Menu name is invalid: {}", e.to_string())
+                format!("Menu name is invalid: {}", e)
             }
         };
         Self::UnprocessableEntity(message)
@@ -73,11 +73,8 @@ impl From<ParseCreateRoleHttpRequestError> for ApiError {
 impl CreateRoleHttpRequestBody {
     fn try_into_domain(self) -> Result<CreateRoleRequest, ParseCreateRoleHttpRequestError> {
         let name = RoleName::try_new(self.name)?;
-        let description = self
-            .description
-            .map(|d| RoleDescription::try_new(d))
-            .transpose()?;
-        let is_deleteable = self.is_deleteable;
+        let description = self.description.map(RoleDescription::try_new).transpose()?;
+        let is_deletable = self.is_deletable;
         let menus = self
             .menus
             .into_iter()
@@ -91,7 +88,7 @@ impl CreateRoleHttpRequestBody {
         Ok(CreateRoleRequest::new(
             name,
             description,
-            is_deleteable,
+            is_deletable,
             menus,
         ))
     }
@@ -121,7 +118,7 @@ pub struct ListRoleHttpRequestBody {
 
 impl ListRoleHttpRequestBody {
     fn try_into_domain(self) -> Result<ListRoleRequest, ParseListRoleHttpRequestError> {
-        let name = self.name.map(|n| RoleName::try_new(n)).transpose()?;
+        let name = self.name.map(RoleName::try_new).transpose()?;
         let page_no = PageNo::try_new(self.page_no)?;
         let page_size = PageSize::try_new(self.page_size)?;
         let page_filter = PageFilter::new(page_no, page_size);
@@ -142,7 +139,7 @@ pub struct ListRoleHttpResponseData {
     pub description: Option<String>,
     pub created_by: i64,
     pub created_by_name: String,
-    pub is_deleteable: bool,
+    pub is_deletable: bool,
 }
 
 impl From<Role> for ListRoleHttpResponseData {
@@ -153,7 +150,7 @@ impl From<Role> for ListRoleHttpResponseData {
             description: Some(role.description),
             created_by: role.created_by,
             created_by_name: role.created_by_name,
-            is_deleteable: role.is_deletable,
+            is_deletable: role.is_deletable,
         }
     }
 }
@@ -172,13 +169,13 @@ impl From<ParseListRoleHttpRequestError> for ApiError {
     fn from(e: ParseListRoleHttpRequestError) -> Self {
         let message = match e {
             ParseListRoleHttpRequestError::RoleName(e) => {
-                format!("Role name is invalid: {}", e.to_string())
+                format!("Role name is invalid: {}", e)
             }
             ParseListRoleHttpRequestError::PageNo(e) => {
-                format!("Page no is invalid: {}", e.to_string())
+                format!("Page no is invalid: {}", e)
             }
             ParseListRoleHttpRequestError::PageSize(e) => {
-                format!("Page size is invalid: {}", e.to_string())
+                format!("Page size is invalid: {}", e)
             }
         };
         Self::UnprocessableEntity(message)

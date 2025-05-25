@@ -154,7 +154,7 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
         &self,
         account_name: Option<&AccountName>,
         organization_id: Option<i64>,
-        first_level_organization_ids: &Vec<i64>,
+        first_level_organization_ids: &[i64],
         page_filter: &PageFilter,
     ) -> impl Future<Output = Result<Vec<Account>, Error>> + Send;
 
@@ -162,6 +162,6 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
         &self,
         account_name: Option<&AccountName>,
         organization_id: Option<i64>,
-        first_level_organization_ids: &Vec<i64>,
+        first_level_organization_ids: &[i64],
     ) -> impl Future<Output = Result<i64, Error>> + Send;
 }

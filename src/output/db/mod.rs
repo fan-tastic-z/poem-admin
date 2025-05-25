@@ -1,5 +1,5 @@
 pub mod account;
-pub mod db;
+pub mod database;
 pub mod menu;
 pub mod organization;
 pub mod repository_impl;

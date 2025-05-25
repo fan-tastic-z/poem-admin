@@ -9,7 +9,7 @@ use crate::{
     errors::Error,
 };
 
-use super::db::Db;
+use super::database::Db;
 
 impl Db {
     pub async fn fetch_role_by_id(
