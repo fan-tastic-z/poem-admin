@@ -32,3 +32,23 @@ cargo run --bin poem-admin init-data -c ./dev/config.toml
 ```bash
 cargo run --bin poem-admin server -c ./dev/config/toml
 ```
+
+### 前端
+
+前端代码是通过 AI 生成
+
+```bash
+git clone git@github.com:fan-tastic-z/admin-web.git
+```
+
+启动前端服务
+
+```bash
+pnpm dev
+```
+
+![page1](./assets/page1.jpg)
+
+![page2](./assets/page2.jpg)
+
+![page3](./assets/page3.jpg)
