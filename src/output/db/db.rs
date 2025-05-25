@@ -80,6 +80,8 @@ impl Db {
 const ROLE_PREFIX: &str = "role:";
 const USER_PREFIX: &str = "user:";
 
+const WHITE_LIST: &[&str] = &["/api/accounts/current"];
+
 #[derive(Clone)]
 pub struct EnforcerWrapper(Arc<RwLock<Enforcer>>);
 
@@ -95,6 +97,9 @@ impl EnforcerWrapper {
         method: &RouteMethod,
     ) -> Result<bool, Error> {
         if user_id == 1 {
+            return Ok(true);
+        }
+        if WHITE_LIST.contains(&path.as_ref()) {
             return Ok(true);
         }
         let user = format!("{USER_PREFIX}{user_id}");

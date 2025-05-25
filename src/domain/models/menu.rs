@@ -98,8 +98,8 @@ fn build_menu_tree<'a>(
             is_authorized: false,
         };
 
-        // 计算节点的选中状态
-        calculate_selection_state(node_map, &mut tree_node, sid_map);
+        // 计算节点的选中状态和授权状态
+        calculate_selection_and_authorization_state(node_map, &mut tree_node, sid_map);
 
         trees.push(tree_node);
     }
@@ -107,16 +107,17 @@ fn build_menu_tree<'a>(
     trees
 }
 
-fn calculate_selection_state(
+fn calculate_selection_and_authorization_state(
     node_map: &HashMap<i64, Vec<&Menu>>,
     node: &mut MenuTree,
     sid_map: &HashMap<i64, bool>,
 ) {
     if !node_map.contains_key(&node.id) || node_map[&node.id].is_empty() {
-        // 叶子节点：直接从sid_map获取选中状态
+        // 叶子节点：直接从sid_map获取选中状态和授权状态
         node.selected = sid_map.get(&node.id).copied().unwrap_or(false);
+        node.is_authorized = sid_map.get(&node.id).copied().unwrap_or(false);
     } else {
-        // 非叶子节点：计算选中状态
+        // 非叶子节点：计算选中状态和授权状态
 
         // 1. 如果所有子节点都被选中，则当前节点被选中
         node.selected = !node.children.iter().any(|child| !child.selected);
@@ -127,6 +128,9 @@ fn calculate_selection_state(
         let has_partial = node.children.iter().any(|child| child.partial_selected);
 
         node.partial_selected = (has_selected && has_unselected) || has_partial;
+
+        // 3. 计算授权状态：如果有任何子节点被授权，则当前节点也被授权
+        node.is_authorized = node.children.iter().any(|child| child.is_authorized);
     }
 }
 
