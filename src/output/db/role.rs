@@ -94,6 +94,7 @@ impl Db {
             query_builder.push(" WHERE name LIKE ");
             query_builder.push_bind(format!("%{}%", name.as_ref()));
         }
+        query_builder.push(" ORDER BY id DESC");
 
         query_builder.push(" LIMIT ");
         query_builder.push_bind(page_size);

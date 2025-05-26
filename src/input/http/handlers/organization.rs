@@ -1,7 +1,7 @@
 use poem::{
     handler,
     http::StatusCode,
-    web::{Data, Json, Path},
+    web::{Data, Json, Path, Query},
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -93,7 +93,7 @@ pub struct OrganizationTreeResponseData {
 pub async fn organization_tree<S: SysService + Send + Sync + 'static>(
     state: Data<&Ctx<S>>,
     extension_data: Data<&ExtensionData>,
-    Json(body): Json<OrganizationTreeHttpRequestBody>,
+    Query(body): Query<OrganizationTreeHttpRequestBody>,
 ) -> Result<ApiSuccess<OrganizationTreeResponseData>, ApiError> {
     state
         .sys_service

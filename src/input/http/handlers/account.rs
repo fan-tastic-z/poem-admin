@@ -11,7 +11,7 @@ use crate::{
     domain::{
         models::{
             account::{
-                AccountData, AccountEmail, AccountEmailError, AccountName, AccountNameError,
+                Account, AccountEmail, AccountEmailError, AccountName, AccountNameError,
                 AccountPassword, AccountPasswordError, CreateAccountRequest,
                 CurrentAccountResponseData, GetAccountRequest, GetAccountResponseData,
                 ListAccountRequest, ListAccountResponseData,
@@ -194,11 +194,46 @@ pub struct ListAccountHttpResponseData {
     pub data: Vec<AccountData>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+pub struct AccountData {
+    pub id: i64,
+    pub name: String,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub is_deletable: bool,
+    pub is_authorized: bool,
+    pub organization_id: i64,
+    pub organization_name: String,
+    pub role_id: i64,
+    pub role_name: String,
+}
+
+impl AccountData {
+    pub fn new(account: &Account) -> Self {
+        Self {
+            id: account.id,
+            name: account.name.clone(),
+            phone: account.phone.clone(),
+            email: account.email.clone(),
+            is_deletable: account.is_deletable,
+            is_authorized: account.is_authorized,
+            organization_id: account.organization_id,
+            organization_name: account.organization_name.clone(),
+            role_id: account.role_id,
+            role_name: account.role_name.clone(),
+        }
+    }
+}
+
 impl From<ListAccountResponseData> for ListAccountHttpResponseData {
     fn from(data: ListAccountResponseData) -> Self {
         Self {
             total: data.total,
-            data: data.data,
+            data: data
+                .data
+                .into_iter()
+                .map(|account: Account| AccountData::new(&account))
+                .collect(),
         }
     }
 }

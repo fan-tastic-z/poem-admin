@@ -14,8 +14,11 @@ use crate::{
 };
 
 use super::{
-    handlers::{account, health::health, login, menu, organization, role},
-    middleware::{auth::AuthMiddleware, permission::PermissionMiddleware},
+    handlers::{account, health::health, login, menu, operation_log, organization, role},
+    middleware::{
+        auth::AuthMiddleware, operation_log::OperationLogMiddleware,
+        permission::PermissionMiddleware,
+    },
 };
 
 pub(crate) type ServerFuture<T> = runtime::JoinHandle<Result<T, io::Error>>;
@@ -148,7 +151,7 @@ fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
                     Route::new()
                         .at(
                             "/tree",
-                            post(organization::organization_tree::<S>::default()),
+                            get(organization::organization_tree::<S>::default()),
                         )
                         .at("/", post(organization::create_organization::<S>::default()))
                         .at(
@@ -156,6 +159,11 @@ fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
                             get(organization::get_organization::<S>::default()),
                         ),
                 )
+                .nest(
+                    "/operation-logs",
+                    Route::new().at("/", get(operation_log::list_operation_log::<S>::default())),
+                )
+                .with(OperationLogMiddleware::<S>::default())
                 .with(PermissionMiddleware::<S>::default())
                 .with(AuthMiddleware::<S>::default()),
         )

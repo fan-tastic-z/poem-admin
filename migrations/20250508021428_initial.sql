@@ -72,3 +72,20 @@ CREATE TABLE IF NOT EXISTS route (
     deleted_at TIMESTAMPTZ
 );
 
+CREATE TABLE IF NOT EXISTS operation_log (
+    id BIGSERIAL PRIMARY KEY,
+    account_id BIGINT NOT NULL DEFAULT 0,
+    account_name TEXT NOT NULL DEFAULT '',
+    ip_address TEXT NOT NULL DEFAULT '',
+    user_agent TEXT NOT NULL DEFAULT '',
+    operation_type TEXT NOT NULL DEFAULT '',
+    operation_module TEXT NOT NULL DEFAULT '',
+    operation_description TEXT NOT NULL DEFAULT '',
+    operation_result TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_operation_log_account_id ON operation_log (account_id);
+CREATE INDEX idx_operation_log_operation_type ON operation_log (operation_type);
+CREATE INDEX idx_operation_log_operation_module ON operation_log (operation_module);
+CREATE INDEX idx_operation_log_created_at ON operation_log (created_at);

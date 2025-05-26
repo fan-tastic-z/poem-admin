@@ -8,6 +8,10 @@ use super::models::{
     },
     auth::LoginRequest,
     menu::MenuTree,
+    operation_log::{
+        CreateOperationLogRequest, ListOperationLogRequest, ListOperationLogResponseData,
+        OperationLog,
+    },
     organization::{
         CreateOrganizationRequest, GetOrganizationRequest, GetOrganizationResponseData,
         Organization, OrganizationLimitType, OrganizationTree,
@@ -22,6 +26,14 @@ use super::models::{
 use error_stack::Result;
 
 pub trait SysService: Clone + Send + Sync + 'static {
+    fn list_operation_log(
+        &self,
+        req: &ListOperationLogRequest,
+    ) -> impl Future<Output = Result<ListOperationLogResponseData, Error>> + Send;
+    fn create_operation_log(
+        &self,
+        req: &CreateOperationLogRequest,
+    ) -> impl Future<Output = Result<(), Error>> + Send;
     fn list_account(
         &self,
         req: &ListAccountRequest,
@@ -84,6 +96,27 @@ pub trait SysService: Clone + Send + Sync + 'static {
 }
 
 pub trait SysRepository: Clone + Send + Sync + 'static {
+    fn list_operation_log(
+        &self,
+        page_filter: &PageFilter,
+        account_ids: &[i64],
+    ) -> impl Future<Output = Result<Vec<OperationLog>, Error>> + Send;
+
+    fn list_operation_log_count(
+        &self,
+        account_ids: &[i64],
+    ) -> impl Future<Output = Result<i64, Error>> + Send;
+
+    fn list_self_and_sub_ogranization_account_ids(
+        &self,
+        current_user_id: i64,
+        limit_type: OrganizationLimitType,
+    ) -> impl Future<Output = Result<Vec<i64>, Error>> + Send;
+
+    fn create_operation_log(
+        &self,
+        req: &CreateOperationLogRequest,
+    ) -> impl Future<Output = Result<(), Error>> + Send;
     fn check_permission(
         &self,
         user_id: i64,

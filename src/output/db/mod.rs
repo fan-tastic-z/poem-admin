@@ -1,6 +1,7 @@
 pub mod account;
 pub mod database;
 pub mod menu;
+pub mod operation_log;
 pub mod organization;
 pub mod repository_impl;
 pub mod role;
