@@ -2,11 +2,7 @@ use std::marker::PhantomData;
 
 use poem::{
     Endpoint, Error, Middleware, Request, Result,
-    http::{
-        Method, StatusCode,
-        header::{FORWARDED, USER_AGENT},
-    },
-    web::RemoteAddr,
+    http::{Method, StatusCode, header::USER_AGENT},
 };
 
 use crate::{
@@ -22,7 +18,6 @@ use crate::{
         },
         ports::SysService,
     },
-    utils::ip_validator::is_valid_ip,
 };
 
 pub struct OperationLogMiddleware<S> {
@@ -63,7 +58,11 @@ impl<E: Endpoint, S: SysService> Endpoint for OperationLogEndpoint<E, S> {
             .get(USER_AGENT)
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
-        let ip_address = req.data::<RemoteAddr>().map(|addr| addr.0.to_string());
+        let ip_address = req
+            .remote_addr()
+            .0
+            .as_socket_addr()
+            .map(|addr| addr.ip().to_string());
         let extension_data = req.extensions().get::<ExtensionData>().cloned();
         let state = req
             .data::<Ctx<S>>()
@@ -167,34 +166,4 @@ fn determine_operation_info(method: &str, path: &str) -> (OperationType, String,
         )
     };
     (operation_type, module, description)
-}
-
-pub fn extract_client_ip(
-    headers: &poem::web::headers::HeaderMap,
-    remote_addr: Option<&str>,
-) -> Option<String> {
-    if let Some(forwarded) = headers.get(FORWARDED) {
-        if let Ok(forwarded_str) = forwarded.to_str() {
-            let first_ip = forwarded_str.split(',').next()?.trim();
-            if is_valid_ip(first_ip) {
-                return Some(first_ip.to_string());
-            }
-        }
-    }
-
-    if let Some(real_ip) = headers.get("x-real-ip") {
-        if let Ok(real_ip_str) = real_ip.to_str() {
-            if is_valid_ip(real_ip_str) {
-                return Some(real_ip_str.to_string());
-            }
-        }
-    }
-
-    remote_addr.and_then(|addr| {
-        if is_valid_ip(addr) {
-            Some(addr.to_string())
-        } else {
-            None
-        }
-    })
 }
