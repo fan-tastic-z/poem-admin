@@ -13,6 +13,36 @@ use crate::{
 use super::database::Db;
 
 impl Db {
+    pub async fn list_account_by_organization_ids(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        organization_ids: &[i64],
+    ) -> Result<Vec<Account>, Error> {
+        let res = sqlx::query_as::<_, Account>(
+            r#"
+            SELECT
+                id,
+                name,
+                password,
+                email,
+                phone,
+                is_deletable,
+                organization_id,
+                organization_name,
+                role_id,
+                role_name
+            FROM account
+            WHERE organization_id = ANY($1)
+            "#,
+        )
+        .bind(organization_ids)
+        .fetch_all(tx.as_mut())
+        .await
+        .change_context_lazy(|| {
+            Error::Message("failed to list account by organization ids".to_string())
+        })?;
+        Ok(res)
+    }
     pub async fn filter_account(
         &self,
         tx: &mut Transaction<'_, Postgres>,

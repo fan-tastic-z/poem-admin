@@ -14,7 +14,7 @@ use crate::{
 };
 
 use super::{
-    handlers::{account, health::health, login, menu, organization, role},
+    handlers::{account, health::health, login, menu, operation_log, organization, role},
     middleware::{
         auth::AuthMiddleware, operation_log::OperationLogMiddleware,
         permission::PermissionMiddleware,
@@ -158,6 +158,10 @@ fn api_routes<S: SysService + Send + Sync + 'static>() -> impl Endpoint {
                             "/:id/detail",
                             get(organization::get_organization::<S>::default()),
                         ),
+                )
+                .nest(
+                    "/operation-logs",
+                    Route::new().at("/", get(operation_log::list_operation_log::<S>::default())),
                 )
                 .with(OperationLogMiddleware::<S>::default())
                 .with(PermissionMiddleware::<S>::default())

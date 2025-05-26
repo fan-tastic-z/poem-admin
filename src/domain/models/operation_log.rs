@@ -1,4 +1,4 @@
-use super::account::AccountName;
+use super::{account::AccountName, page_utils::PageFilter};
 use crate::utils::ip_validator;
 use chrono::{DateTime, Utc};
 use nutype::nutype;
@@ -25,6 +25,15 @@ pub enum OperationResult {
     Success,
     #[sqlx(rename = "FAILED")]
     Failed,
+}
+
+impl std::fmt::Display for OperationResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OperationResult::Success => write!(f, "SUCCESS"),
+            OperationResult::Failed => write!(f, "FAILED"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, sqlx::Type)]
@@ -195,3 +204,24 @@ pub struct OperationLogModule(String);
     )
 )]
 pub struct OperationLogDescription(String);
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ListOperationLogRequest {
+    pub page_filter: PageFilter,
+    pub current_user_id: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ListOperationLogResponseData {
+    pub operation_logs: Vec<OperationLog>,
+    pub total: i64,
+}
+
+impl ListOperationLogResponseData {
+    pub fn new(total: i64, operation_logs: Vec<OperationLog>) -> Self {
+        Self {
+            operation_logs,
+            total,
+        }
+    }
+}

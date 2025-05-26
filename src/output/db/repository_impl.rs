@@ -7,7 +7,7 @@ use crate::{
             account::{Account, AccountName, CreateAccountRequest},
             auth::LoginRequest,
             menu::{MenuTree, children_menu_tree},
-            operation_log::CreateOperationLogRequest,
+            operation_log::{CreateOperationLogRequest, OperationLog},
             organization::{CreateOrganizationRequest, Organization, OrganizationLimitType},
             page_utils::PageFilter,
             role::{CreateRoleRequest, ListRoleResponseData, Role, RoleName},
@@ -20,8 +20,35 @@ use crate::{
 };
 
 use super::database::Db;
-
 impl SysRepository for Db {
+    async fn list_self_and_sub_ogranization_account_ids(
+        &self,
+        current_user_id: i64,
+        limit_type: OrganizationLimitType,
+    ) -> Result<Vec<i64>, Error> {
+        let mut tx =
+            self.pool.begin().await.change_context_lazy(|| {
+                Error::Message("failed to begin transaction".to_string())
+            })?;
+        let account = self.fetch_account_by_id(&mut tx, current_user_id).await?;
+        let is_admin = account.id == 1;
+        let organizations = self.all_organizations(&mut tx).await?;
+        let organization_ids = self
+            .list_origanization_by_id(account.organization_id, is_admin, limit_type, organizations)
+            .await?;
+        let mut account_ids = self
+            .list_account_by_organization_ids(&mut tx, &organization_ids)
+            .await?
+            .iter()
+            .map(|a| a.id)
+            .collect::<Vec<i64>>();
+        account_ids.push(current_user_id);
+        tx.commit()
+            .await
+            .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
+        Ok(account_ids)
+    }
+
     async fn create_operation_log(&self, req: &CreateOperationLogRequest) -> Result<(), Error> {
         let mut tx =
             self.pool.begin().await.change_context_lazy(|| {
@@ -450,6 +477,39 @@ impl SysRepository for Db {
             .await
             .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
         Ok(ListRoleResponseData::new(total, roles))
+    }
+
+    async fn list_operation_log(
+        &self,
+        page_filter: &PageFilter,
+        account_ids: &[i64],
+    ) -> Result<Vec<OperationLog>, Error> {
+        let mut tx =
+            self.pool.begin().await.change_context_lazy(|| {
+                Error::Message("failed to begin transaction".to_string())
+            })?;
+        let operation_logs = self
+            .filter_operation_log(&mut tx, page_filter, account_ids)
+            .await
+            .change_context_lazy(|| Error::Message("failed to list operation log".to_string()))?;
+        tx.commit()
+            .await
+            .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
+        Ok(operation_logs)
+    }
+
+    async fn list_operation_log_count(&self, account_ids: &[i64]) -> Result<i64, Error> {
+        let mut tx =
+            self.pool.begin().await.change_context_lazy(|| {
+                Error::Message("failed to begin transaction".to_string())
+            })?;
+        let total = self
+            .filter_operation_log_count(&mut tx, account_ids)
+            .await?;
+        tx.commit()
+            .await
+            .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
+        Ok(total)
     }
 }
 

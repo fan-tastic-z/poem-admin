@@ -14,7 +14,9 @@ use super::{
         },
         auth::LoginRequest,
         menu::MenuTree,
-        operation_log::CreateOperationLogRequest,
+        operation_log::{
+            CreateOperationLogRequest, ListOperationLogRequest, ListOperationLogResponseData,
+        },
         organization::{
             CreateOrganizationRequest, GetOrganizationRequest, GetOrganizationResponseData,
             OrganizationLimitType, OrganizationTree, children_organization_tree,
@@ -50,6 +52,24 @@ impl<R> SysService for Service<R>
 where
     R: SysRepository,
 {
+    async fn list_operation_log(
+        &self,
+        req: &ListOperationLogRequest,
+    ) -> Result<ListOperationLogResponseData, Error> {
+        let account_ids = self
+            .repo
+            .list_self_and_sub_ogranization_account_ids(
+                req.current_user_id,
+                OrganizationLimitType::SubOrganization,
+            )
+            .await?;
+        let operation_logs = self
+            .repo
+            .list_operation_log(&req.page_filter, &account_ids)
+            .await?;
+        let total = self.repo.list_operation_log_count(&account_ids).await?;
+        Ok(ListOperationLogResponseData::new(total, operation_logs))
+    }
     async fn create_operation_log(&self, req: &CreateOperationLogRequest) -> Result<(), Error> {
         self.repo.create_operation_log(req).await?;
         Ok(())
