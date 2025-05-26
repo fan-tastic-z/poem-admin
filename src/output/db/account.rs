@@ -93,6 +93,8 @@ impl Db {
             query_builder.push(")");
         }
 
+        query_builder.push(" ORDER BY id DESC");
+
         let page_no = page_filter.page_no().as_ref();
         let page_size = page_filter.page_size().as_ref();
 

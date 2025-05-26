@@ -37,6 +37,7 @@ impl Db {
         query_builder.push(" WHERE account_id = ANY(");
         query_builder.push_bind(account_ids);
         query_builder.push(")");
+        query_builder.push(" ORDER BY id DESC");
 
         let page_no = page_filter.page_no().as_ref();
         let page_size = page_filter.page_size().as_ref();
@@ -46,6 +47,7 @@ impl Db {
         query_builder.push_bind(page_size);
         query_builder.push(" OFFSET ");
         query_builder.push_bind(offset);
+
         let operation_logs = query_builder
             .build_query_as::<OperationLog>()
             .fetch_all(tx.as_mut())

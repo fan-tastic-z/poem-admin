@@ -9,8 +9,8 @@ use crate::{
 use super::{
     models::{
         account::{
-            Account, AccountData, CreateAccountRequest, CurrentAccountResponseData,
-            GetAccountRequest, GetAccountResponseData, ListAccountRequest, ListAccountResponseData,
+            Account, CreateAccountRequest, CurrentAccountResponseData, GetAccountRequest,
+            GetAccountResponseData, ListAccountRequest, ListAccountResponseData,
         },
         auth::LoginRequest,
         menu::MenuTree,
@@ -154,13 +154,16 @@ where
         let account_data_list = account_list
             .iter()
             .map(|account| {
-                let mut a = AccountData::new(account);
+                // let mut a = AccountData::new(account);
                 if organization_sub_include.contains(&account.organization_id)
                     || account.id == current_account.id
                 {
-                    a.is_authorized = true;
+                    let mut account_clone = account.clone();
+                    account_clone.is_authorized = true;
+                    account_clone
+                } else {
+                    account.clone()
                 }
-                a
             })
             .collect();
         Ok(ListAccountResponseData::new(total, account_data_list))

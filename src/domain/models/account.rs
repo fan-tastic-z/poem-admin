@@ -18,6 +18,8 @@ pub struct Account {
     pub role_name: String,
     pub phone: Option<String>,
     pub is_deletable: bool,
+    #[sqlx(skip)]
+    pub is_authorized: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -133,34 +135,11 @@ impl ListAccountRequest {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ListAccountResponseData {
     pub total: i64,
-    pub data: Vec<AccountData>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-pub struct AccountData {
-    pub id: i64,
-    pub name: String,
-    pub phone: Option<String>,
-    pub email: Option<String>,
-    pub is_deletable: bool,
-    pub is_authorized: bool,
-}
-
-impl AccountData {
-    pub fn new(account: &Account) -> Self {
-        Self {
-            id: account.id,
-            name: account.name.clone(),
-            phone: account.phone.clone(),
-            email: account.email.clone(),
-            is_deletable: account.is_deletable,
-            is_authorized: false,
-        }
-    }
+    pub data: Vec<Account>,
 }
 
 impl ListAccountResponseData {
-    pub fn new(total: i64, data: Vec<AccountData>) -> Self {
+    pub fn new(total: i64, data: Vec<Account>) -> Self {
         Self { total, data }
     }
 }
