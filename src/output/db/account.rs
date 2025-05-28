@@ -1,5 +1,5 @@
 use error_stack::{Result, ResultExt};
-use sqlx::{Postgres, QueryBuilder, Row, Transaction};
+use sqlx::{Postgres, Transaction};
 
 use crate::{
     domain::models::{
@@ -10,9 +10,9 @@ use crate::{
     utils::password_hash::compute_password_hash,
 };
 
-use super::{
-    base::{Dao, dao_create, dao_upsert},
-    database::Db,
+use super::base::{
+    Dao, DaoQueryBuilder, dao_create, dao_fetch_by_column, dao_fetch_by_id,
+    dao_list_by_array_column, dao_upsert,
 };
 
 pub struct AccountDao;
@@ -47,207 +47,82 @@ impl AccountDao {
         let id = dao_upsert::<Self, _>(tx, req, "name", &["password"]).await?;
         Ok(id)
     }
-}
 
-impl Db {
-    pub async fn list_account_by_organization_ids(
-        &self,
+    pub async fn list_by_organization_ids(
         tx: &mut Transaction<'_, Postgres>,
         organization_ids: &[i64],
     ) -> Result<Vec<Account>, Error> {
-        let res = sqlx::query_as::<_, Account>(
-            r#"
-            SELECT
-                id,
-                name,
-                password,
-                email,
-                phone,
-                is_deletable,
-                organization_id,
-                organization_name,
-                role_id,
-                role_name
-            FROM account
-            WHERE organization_id = ANY($1)
-            "#,
-        )
-        .bind(organization_ids)
-        .fetch_all(tx.as_mut())
-        .await
-        .change_context_lazy(|| {
-            Error::Message("failed to list account by organization ids".to_string())
-        })?;
-        Ok(res)
+        dao_list_by_array_column::<Self, Account>(tx, "organization_id", organization_ids).await
     }
-    pub async fn filter_account(
-        &self,
+
+    pub async fn filter_accounts(
         tx: &mut Transaction<'_, Postgres>,
         account_name: Option<&AccountName>,
         organization_id: Option<i64>,
         first_level_organization_ids: &[i64],
         page_filter: &PageFilter,
     ) -> Result<Vec<Account>, Error> {
-        let mut query_builder = QueryBuilder::new(
-            r#"
-            SELECT
-                id,
-                name,
-                password,
-                email,
-                phone,
-                is_deletable,
-                organization_id,
-                organization_name,
-                role_id,
-                role_name
-            FROM account
-            "#,
-        );
+        let mut query_builder = DaoQueryBuilder::<Self>::new();
 
-        // Build WHERE conditions based on the requirements
-        let mut has_where = false;
-
+        // 添加条件
         if let Some(name) = account_name {
-            query_builder.push(" WHERE name LIKE ");
-            query_builder.push_bind(format!("%{}%", name.as_ref()));
-            has_where = true;
+            query_builder = query_builder.and_where_like("name", name.as_ref());
         } else if let Some(org_id) = organization_id {
-            query_builder.push(" WHERE organization_id = ");
-            query_builder.push_bind(org_id);
-            has_where = true;
+            query_builder = query_builder.and_where_eq("organization_id", org_id);
         }
 
-        // 只有当first_level_organization_ids不为空时才应用组织权限限制
-        // 如果为空，说明是超级管理员，可以访问所有组织
+        // 组织权限限制
         if !first_level_organization_ids.is_empty() {
-            if has_where {
-                query_builder.push(" AND organization_id = ANY(");
-            } else {
-                query_builder.push(" WHERE organization_id = ANY(");
-            }
-            query_builder.push_bind(first_level_organization_ids);
-            query_builder.push(")");
+            query_builder =
+                query_builder.and_where_in("organization_id", first_level_organization_ids);
         }
 
-        query_builder.push(" ORDER BY id DESC");
-
-        let page_no = page_filter.page_no().as_ref();
-        let page_size = page_filter.page_size().as_ref();
-
+        // 分页和排序
+        let page_no = *page_filter.page_no().as_ref();
+        let page_size = *page_filter.page_size().as_ref();
         let offset = (page_no - 1) * page_size;
-        query_builder.push(" LIMIT ");
-        query_builder.push_bind(page_size);
-        query_builder.push(" OFFSET ");
-        query_builder.push_bind(offset);
 
-        let accounts = query_builder
-            .build_query_as::<Account>()
-            .fetch_all(tx.as_mut())
+        query_builder
+            .order_by_desc("id")
+            .limit_offset(page_size as i64, offset as i64)
+            .fetch_all(tx)
             .await
-            .change_context_lazy(|| Error::Message("failed to filter accounts".to_string()))?;
-
-        Ok(accounts)
     }
-
-    pub async fn filter_account_count(
-        &self,
+    pub async fn filter_accounts_count(
         tx: &mut Transaction<'_, Postgres>,
         account_name: Option<&AccountName>,
         organization_id: Option<i64>,
         first_level_organization_ids: &[i64],
     ) -> Result<i64, Error> {
-        let mut query_builder = QueryBuilder::new(
-            r#"
-            SELECT COUNT(id) FROM account
-            "#,
-        );
+        let mut query_builder = DaoQueryBuilder::<Self>::new();
 
-        // Build WHERE conditions based on the requirements
-        let mut has_where = false;
-
+        // 添加相同的条件
         if let Some(name) = account_name {
-            query_builder.push(" WHERE name LIKE ");
-            query_builder.push_bind(format!("%{}%", name.as_ref()));
-            has_where = true;
+            query_builder = query_builder.and_where_like("name", name.as_ref());
         } else if let Some(org_id) = organization_id {
-            query_builder.push(" WHERE organization_id = ");
-            query_builder.push_bind(org_id);
-            has_where = true;
+            query_builder = query_builder.and_where_eq("organization_id", org_id);
         }
 
-        // 只有当first_level_organization_ids不为空时才应用组织权限限制
-        // 如果为空，说明是超级管理员，可以访问所有组织
         if !first_level_organization_ids.is_empty() {
-            if has_where {
-                query_builder.push(" AND organization_id = ANY(");
-            } else {
-                query_builder.push(" WHERE organization_id = ANY(");
-            }
-            query_builder.push_bind(first_level_organization_ids);
-            query_builder.push(")");
+            query_builder =
+                query_builder.and_where_in("organization_id", first_level_organization_ids);
         }
 
-        let count = query_builder
-            .build()
-            .fetch_one(tx.as_mut())
-            .await
-            .change_context_lazy(|| Error::Message("failed to filter account count".to_string()))?;
-
-        Ok(count.get::<i64, _>("count"))
+        query_builder.count(tx).await
     }
 
-    pub async fn fetch_account_by_id(
-        &self,
+    pub async fn fetch_by_id(
         tx: &mut Transaction<'_, Postgres>,
         id: i64,
     ) -> Result<Account, Error> {
-        let res = sqlx::query_as::<_, Account>(
-            r#"
-        SELECT
-            id,
-            name,
-            password,
-            email,
-            phone,
-            is_deletable,
-            organization_id,
-            organization_name,
-            role_id,
-            role_name
-        FROM account WHERE id = $1"#,
-        )
-        .bind(id)
-        .fetch_one(tx.as_mut())
-        .await
-        .change_context_lazy(|| Error::Message("failed to fetch account by id".to_string()))?;
-        Ok(res)
+        dao_fetch_by_id::<Self, Account>(tx, id).await
     }
 
-    pub async fn filter_account_by_name(
-        &self,
+    // 迁移：按名称查询账户
+    pub async fn fetch_by_name(
         tx: &mut Transaction<'_, Postgres>,
         name: &AccountName,
     ) -> Result<Option<Account>, Error> {
-        let res = sqlx::query_as::<_, Account>(
-            r#"
-        SELECT
-            id,
-            name,
-            password,
-            email,
-            phone,
-            is_deletable,
-            organization_id,
-            organization_name,
-            role_id,
-            role_name
-        FROM account WHERE name = $1"#,
-        )
-        .bind(name.as_ref())
-        .fetch_optional(tx.as_mut())
-        .await
-        .change_context_lazy(|| Error::Message("failed to filter account by name".to_string()))?;
-        Ok(res)
+        dao_fetch_by_column::<Self, Account>(tx, "name", name.as_ref()).await
     }
 }

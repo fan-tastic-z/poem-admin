@@ -1,8 +1,11 @@
 use error_stack::{Result, ResultExt};
 use modql::{SIden, field::HasSeaFields};
-use sea_query::{Alias, Iden, IntoIden, OnConflict, PostgresQueryBuilder, Query, TableRef};
+use sea_query::{
+    Alias, Condition, Expr, Iden, IntoIden, OnConflict, PostgresQueryBuilder, Query,
+    SelectStatement, TableRef,
+};
 use sea_query_binder::SqlxBinder;
-use sqlx::{Postgres, Transaction};
+use sqlx::{FromRow, Postgres, Row, Transaction};
 
 use crate::errors::Error;
 
@@ -89,4 +92,177 @@ where
         .change_context_lazy(|| Error::Message("failed to upsert record".to_string()))?;
 
     Ok(id)
+}
+
+// 通用的按ID查询方法
+pub async fn dao_fetch_by_id<D, T>(tx: &mut Transaction<'_, Postgres>, id: i64) -> Result<T, Error>
+where
+    D: Dao,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Unpin + Send,
+{
+    let (sql, values) = Query::select()
+        .from(D::table_ref())
+        .columns([Alias::new("*")])
+        .and_where(Expr::col(CommonIden::Id).eq(id))
+        .build_sqlx(PostgresQueryBuilder);
+
+    log::debug!("sql: {} values: {:?}", sql, values);
+
+    let result = sqlx::query_as_with::<_, T, _>(&sql, values)
+        .fetch_one(tx.as_mut())
+        .await
+        .change_context_lazy(|| Error::Message("failed to fetch record by id".to_string()))?;
+
+    Ok(result)
+}
+
+// 通用的按单个条件查询方法
+pub async fn dao_fetch_by_column<D, T>(
+    tx: &mut Transaction<'_, Postgres>,
+    column_name: &str,
+    value: &str,
+) -> Result<Option<T>, Error>
+where
+    D: Dao,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Unpin + Send,
+{
+    let (sql, values) = Query::select()
+        .from(D::table_ref())
+        .columns([Alias::new("*")])
+        .and_where(Expr::col(Alias::new(column_name)).eq(value))
+        .build_sqlx(PostgresQueryBuilder);
+
+    log::debug!("sql: {} values: {:?}", sql, values);
+
+    let result = sqlx::query_as_with::<_, T, _>(&sql, values)
+        .fetch_optional(tx.as_mut())
+        .await
+        .change_context_lazy(|| Error::Message("failed to fetch record by column".to_string()))?;
+
+    Ok(result)
+}
+
+// 通用的按数组条件查询方法
+pub async fn dao_list_by_array_column<D, T>(
+    tx: &mut Transaction<'_, Postgres>,
+    column_name: &str,
+    values: &[i64],
+) -> Result<Vec<T>, Error>
+where
+    D: Dao,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Unpin + Send,
+{
+    let (sql, query_values) = Query::select()
+        .from(D::table_ref())
+        .columns([Alias::new("*")])
+        .and_where(Expr::col(Alias::new(column_name)).is_in(values.iter().copied()))
+        .build_sqlx(PostgresQueryBuilder);
+
+    log::debug!("sql: {} values: {:?}", sql, query_values);
+
+    let result = sqlx::query_as_with::<_, T, _>(&sql, query_values)
+        .fetch_all(tx.as_mut())
+        .await
+        .change_context_lazy(|| {
+            Error::Message("failed to list records by array column".to_string())
+        })?;
+
+    Ok(result)
+}
+
+// 通用的分页查询构建器
+pub struct DaoQueryBuilder<D: Dao> {
+    query: SelectStatement,
+    conditions: Vec<Condition>,
+    _phantom: std::marker::PhantomData<D>,
+}
+
+impl<D: Dao> Default for DaoQueryBuilder<D> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<D: Dao> DaoQueryBuilder<D> {
+    pub fn new() -> Self {
+        let mut query = Query::select();
+        query.from(D::table_ref()).columns([Alias::new("*")]);
+
+        Self {
+            query,
+            conditions: Vec::new(),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    pub fn and_where_like(mut self, column: &str, value: &str) -> Self {
+        let condition = Expr::col(Alias::new(column)).like(format!("%{}%", value));
+        self.query.and_where(condition.clone());
+        self.conditions.push(Condition::all().add(condition));
+        self
+    }
+
+    pub fn and_where_eq(mut self, column: &str, value: i64) -> Self {
+        let condition = Expr::col(Alias::new(column)).eq(value);
+        self.query.and_where(condition.clone());
+        self.conditions.push(Condition::all().add(condition));
+        self
+    }
+
+    pub fn and_where_in(mut self, column: &str, values: &[i64]) -> Self {
+        if !values.is_empty() {
+            let condition = Expr::col(Alias::new(column)).is_in(values.iter().copied());
+            self.query.and_where(condition.clone());
+            self.conditions.push(Condition::all().add(condition));
+        }
+        self
+    }
+
+    pub fn order_by_desc(mut self, column: &str) -> Self {
+        self.query
+            .order_by(Alias::new(column), sea_query::Order::Desc);
+        self
+    }
+
+    pub fn limit_offset(mut self, limit: i64, offset: i64) -> Self {
+        self.query.limit(limit as u64).offset(offset as u64);
+        self
+    }
+
+    pub async fn fetch_all<T>(self, tx: &mut Transaction<'_, Postgres>) -> Result<Vec<T>, Error>
+    where
+        T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Unpin + Send,
+    {
+        let (sql, values) = self.query.build_sqlx(PostgresQueryBuilder);
+        log::debug!("sql: {} values: {:?}", sql, values);
+
+        let result = sqlx::query_as_with::<_, T, _>(&sql, values)
+            .fetch_all(tx.as_mut())
+            .await
+            .change_context_lazy(|| Error::Message("failed to fetch records".to_string()))?;
+
+        Ok(result)
+    }
+
+    pub async fn count(self, tx: &mut Transaction<'_, Postgres>) -> Result<i64, Error> {
+        let mut count_query = Query::select();
+        count_query
+            .from(D::table_ref())
+            .expr(Expr::col(CommonIden::Id).count());
+
+        // 应用存储的条件
+        for condition in self.conditions {
+            count_query.cond_where(condition);
+        }
+
+        let (sql, values) = count_query.build_sqlx(PostgresQueryBuilder);
+        log::debug!("sql: {} values: {:?}", sql, values);
+
+        let result = sqlx::query_with(&sql, values)
+            .fetch_one(tx.as_mut())
+            .await
+            .change_context_lazy(|| Error::Message("failed to count records".to_string()))?;
+
+        Ok(result.get::<i64, _>(0))
+    }
 }

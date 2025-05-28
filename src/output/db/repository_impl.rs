@@ -31,14 +31,13 @@ impl SysRepository for Db {
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
-        let account = self.fetch_account_by_id(&mut tx, current_user_id).await?;
+        let account = AccountDao::fetch_by_id(&mut tx, current_user_id).await?;
         let is_admin = account.id == 1;
         let organizations = self.all_organizations(&mut tx).await?;
         let organization_ids = self
             .list_origanization_by_id(account.organization_id, is_admin, limit_type, organizations)
             .await?;
-        let mut account_ids = self
-            .list_account_by_organization_ids(&mut tx, &organization_ids)
+        let mut account_ids = AccountDao::list_by_organization_ids(&mut tx, &organization_ids)
             .await?
             .iter()
             .map(|a| a.id)
@@ -72,14 +71,13 @@ impl SysRepository for Db {
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
-        let total = self
-            .filter_account_count(
-                &mut tx,
-                account_name,
-                organization_id,
-                first_level_organization_ids,
-            )
-            .await?;
+        let total = AccountDao::filter_accounts_count(
+            &mut tx,
+            account_name,
+            organization_id,
+            first_level_organization_ids,
+        )
+        .await?;
         tx.commit()
             .await
             .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
@@ -97,15 +95,14 @@ impl SysRepository for Db {
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
-        let account_list = self
-            .filter_account(
-                &mut tx,
-                account_name,
-                organization_id,
-                first_level_organization_ids,
-                page_filter,
-            )
-            .await?;
+        let account_list = AccountDao::filter_accounts(
+            &mut tx,
+            account_name,
+            organization_id,
+            first_level_organization_ids,
+            page_filter,
+        )
+        .await?;
         tx.commit()
             .await
             .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
@@ -166,7 +163,7 @@ impl SysRepository for Db {
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
-        let account = self.fetch_account_by_id(&mut tx, id).await?;
+        let account = AccountDao::fetch_by_id(&mut tx, id).await?;
         tx.commit()
             .await
             .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
@@ -207,8 +204,7 @@ impl SysRepository for Db {
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
-        let assigner_account = self
-            .fetch_account_by_id(&mut tx, assigner_user_id)
+        let assigner_account = AccountDao::fetch_by_id(&mut tx, assigner_user_id)
             .await
             .change_context_lazy(|| Error::Message("failed to filter account".to_string()))?;
         let assigner_role_menus = self
@@ -236,7 +232,7 @@ impl SysRepository for Db {
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
-        let account = self.filter_account_by_name(&mut tx, &req.username).await?;
+        let account = AccountDao::fetch_by_name(&mut tx, &req.username).await?;
         if let Some(account) = account {
             if verify_password_hash(&req.password, &account.password) {
                 return Ok(account);
@@ -257,7 +253,7 @@ impl SysRepository for Db {
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
-        let account = self.fetch_account_by_id(&mut tx, current_user_id).await?;
+        let account = AccountDao::fetch_by_id(&mut tx, current_user_id).await?;
         if account.organization_id == -1 && limit_type == OrganizationLimitType::FirstLevel {
             return Ok(());
         }
@@ -326,8 +322,7 @@ impl SysRepository for Db {
                 Error::Message("failed to begin transaction".to_string())
             })?;
         let role_id = req.role_id;
-        if self
-            .filter_account_by_name(&mut tx, &req.name)
+        if AccountDao::fetch_by_name(&mut tx, &req.name)
             .await?
             .is_some()
         {
@@ -405,8 +400,7 @@ impl SysRepository for Db {
         {
             return Err(Error::BadRequest("role already exists".to_string()).into());
         }
-        let current_account = self
-            .fetch_account_by_id(&mut tx, current_user_id)
+        let current_account = AccountDao::fetch_by_id(&mut tx, current_user_id)
             .await
             .change_context_lazy(|| {
                 Error::Message("failed to fetch current account".to_string())
