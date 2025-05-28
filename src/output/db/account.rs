@@ -1,7 +1,4 @@
 use error_stack::{Result, ResultExt};
-use modql::field::HasSeaFields;
-use sea_query::{PostgresQueryBuilder, Query};
-use sea_query_binder::SqlxBinder;
 use sqlx::{Postgres, QueryBuilder, Row, Transaction};
 
 use crate::{
@@ -10,11 +7,13 @@ use crate::{
         page_utils::PageFilter,
     },
     errors::Error,
-    output::db::base::CommonIden,
     utils::password_hash::compute_password_hash,
 };
 
-use super::{base::Dao, database::Db};
+use super::{
+    base::{Dao, dao_create, dao_upsert},
+    database::Db,
+};
 
 pub struct AccountDao;
 
@@ -23,26 +22,29 @@ impl Dao for AccountDao {
 }
 
 impl AccountDao {
-    pub async fn create_account<E>(tx: &mut Transaction<'_, Postgres>, req: E) -> Result<i64, Error>
-    where
-        E: HasSeaFields,
-    {
-        let fields = req.not_none_sea_fields();
-        let (columns, sea_values) = fields.for_sea_insert();
-        let mut query = Query::insert();
-        query
-            .into_table(Self::table_ref())
-            .columns(columns)
-            .values(sea_values)
-            .change_context_lazy(|| Error::Message("failed to create account".to_string()))?
-            .returning(Query::returning().columns([CommonIden::Id]));
-        let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
-        log::info!("sql: {} values: {:?}", sql, values);
-        let sqlx_query = sqlx::query_as_with::<_, (i64,), _>(&sql, values);
-        let (id,) = sqlx_query
-            .fetch_one(tx.as_mut())
-            .await
-            .change_context_lazy(|| Error::Message("failed to create account".to_string()))?;
+    pub async fn create_account(
+        tx: &mut Transaction<'_, Postgres>,
+        req: CreateAccountRequest,
+    ) -> Result<i64, Error> {
+        let password = compute_password_hash(&req.password)?;
+        let req = req.with_password(
+            AccountPassword::try_from(password)
+                .change_context_lazy(|| Error::Message("failed to create account".to_string()))?,
+        );
+        let id = dao_create::<Self, _>(tx, req).await?;
+        Ok(id)
+    }
+
+    pub async fn create_super_user(
+        tx: &mut Transaction<'_, Postgres>,
+        req: CreateAccountRequest,
+    ) -> Result<i64, Error> {
+        let password = compute_password_hash(&req.password)?;
+        let req = req.with_password(
+            AccountPassword::try_from(password)
+                .change_context_lazy(|| Error::Message("failed to create account".to_string()))?,
+        );
+        let id = dao_upsert::<Self, _>(tx, req, "name", &["password"]).await?;
         Ok(id)
     }
 }
@@ -247,72 +249,5 @@ impl Db {
         .await
         .change_context_lazy(|| Error::Message("failed to filter account by name".to_string()))?;
         Ok(res)
-    }
-
-    pub async fn save_super_user(
-        &self,
-        tx: &mut Transaction<'_, Postgres>,
-        name: &AccountName,
-        password: &AccountPassword,
-    ) -> Result<i64, Error> {
-        let organization_id = -1;
-        let organization_name = "根组织".to_string();
-        let role_id = 0;
-        let res = sqlx::query(
-            r#"
-        INSERT INTO
-            account
-                (name, password, is_deletable,organization_id, organization_name, role_id)
-        VALUES
-            ($1, $2, $3, $4, $5, $6)
-        ON conflict(name) DO UPDATE
-        SET "password" = excluded.password
-        RETURNING id
-        "#,
-        )
-        .bind(name.as_ref())
-        .bind(password.as_ref())
-        .bind(false)
-        .bind(organization_id)
-        .bind(organization_name)
-        .bind(role_id)
-        .fetch_one(tx.as_mut())
-        .await
-        .change_context_lazy(|| Error::Message("failed to save super user".to_string()))?;
-
-        let id = res.get::<i64, _>("id");
-        Ok(id)
-    }
-
-    pub async fn save_account(
-        &self,
-        tx: &mut Transaction<'_, Postgres>,
-        req: &CreateAccountRequest,
-    ) -> Result<i64, Error> {
-        let password = compute_password_hash(&req.password)?;
-        let res = sqlx::query(
-            r#"
-        INSERT INTO
-            account
-                (name, password, email, organization_id, organization_name, role_id, role_name, is_deletable)
-        VALUES
-            ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING id
-        "#,
-        )
-        .bind(req.name.as_ref())
-        .bind(password)
-        .bind(req.email.as_ref().map(|e| e.as_ref()).unwrap_or(""))
-        .bind(req.organization_id)
-        .bind(req.organization_name.as_ref())
-        .bind(req.role_id)
-        .bind(req.role_name.as_ref())
-        .bind(req.is_deletable)
-        .fetch_one(tx.as_mut())
-        .await
-        .change_context_lazy(|| Error::Message("failed to save account".to_string()))?;
-
-        let id = res.get::<i64, _>("id");
-        Ok(id)
     }
 }

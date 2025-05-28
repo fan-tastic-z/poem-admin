@@ -4,13 +4,17 @@ use crate::{
     auth::jwt::JWT,
     config::settings::{Config, LoadConfigResult, load_config},
     domain::{
-        models::account::{AccountName, AccountPassword},
+        models::{
+            account::{AccountName, AccountPassword, CreateAccountRequest},
+            organization::OrganizationName,
+            role::RoleName,
+        },
         ports::SysService,
         services::Service,
     },
     errors::Error,
     input::http::http_server::{self, make_acceptor_and_advertise_addr},
-    output::db::database::Db,
+    output::db::{account::AccountDao, database::Db},
     utils::{
         num_cpus,
         password_hash::compute_password_hash,
@@ -189,13 +193,16 @@ async fn run_create_super_user(config: Config, password: String) -> Result<(), E
     let password_hash = compute_password_hash(&password).change_context_lazy(make_error)?;
     let db = Db::new(&config).await.change_context_lazy(make_error)?;
     let mut tx = db.pool.begin().await.change_context_lazy(make_error)?;
-    db.save_super_user(
-        &mut tx,
-        &AccountName::try_new("admin").change_context_lazy(make_error)?,
-        &AccountPassword::try_new(password_hash).change_context_lazy(make_error)?,
-    )
-    .await
-    .change_context_lazy(make_error)?;
+
+    let req = CreateAccountRequest::new(
+        AccountName::try_new("admin").change_context_lazy(make_error)?,
+        AccountPassword::try_new(password_hash).change_context_lazy(make_error)?,
+        -1,
+        OrganizationName::try_new("根组织").change_context_lazy(make_error)?,
+        0,
+        RoleName::try_new("超级管理员").change_context_lazy(make_error)?,
+    );
+    AccountDao::create_account(&mut tx, req).await?;
     tx.commit().await.change_context_lazy(make_error)?;
     log::info!("create super user success");
     Ok(())

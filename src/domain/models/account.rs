@@ -57,6 +57,10 @@ impl CreateAccountRequest {
             is_deletable: true, // 默认可删除
         }
     }
+    pub fn with_password(mut self, password: AccountPassword) -> Self {
+        self.password = password;
+        self
+    }
 
     /// Set email for the account
     pub fn with_email(mut self, email: AccountEmail) -> Self {

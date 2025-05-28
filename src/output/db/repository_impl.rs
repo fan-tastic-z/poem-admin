@@ -20,6 +20,7 @@ use crate::{
 };
 
 use super::{account::AccountDao, database::Db};
+
 impl SysRepository for Db {
     async fn list_self_and_sub_ogranization_account_ids(
         &self,
