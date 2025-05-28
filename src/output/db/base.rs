@@ -94,6 +94,110 @@ where
     Ok(id)
 }
 
+// dao_batch_insert common batch insert method for all dao
+pub async fn dao_batch_insert<D, E>(
+    tx: &mut Transaction<'_, Postgres>,
+    requests: Vec<E>,
+) -> Result<Vec<i64>, Error>
+where
+    E: HasSeaFields + Clone,
+    D: Dao,
+{
+    if requests.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // 获取第一个请求的字段结构来确定列名
+    let first_fields = requests[0].clone().not_none_sea_fields();
+    let (columns, _) = first_fields.for_sea_insert();
+
+    let mut query = Query::insert();
+    query.into_table(D::table_ref()).columns(columns);
+
+    // 为每个请求添加值
+    for req in requests {
+        let fields = req.not_none_sea_fields();
+        let (_, sea_values) = fields.for_sea_insert();
+        query.values(sea_values).change_context_lazy(|| {
+            Error::Message("failed to add batch insert values".to_string())
+        })?;
+    }
+
+    query.returning(Query::returning().columns([CommonIden::Id]));
+
+    let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
+    log::debug!("sql: {} values: {:?}", sql, values);
+
+    let sqlx_query = sqlx::query_as_with::<_, (i64,), _>(&sql, values);
+    let results = sqlx_query
+        .fetch_all(tx.as_mut())
+        .await
+        .change_context_lazy(|| Error::Message("failed to batch insert records".to_string()))?;
+
+    let ids = results.into_iter().map(|(id,)| id).collect();
+    Ok(ids)
+}
+
+// dao_batch_upsert common batch upsert method for all dao
+pub async fn dao_batch_upsert<D, E>(
+    tx: &mut Transaction<'_, Postgres>,
+    requests: Vec<E>,
+    conflict_column: &str,
+    update_columns: &[&str],
+) -> Result<Vec<i64>, Error>
+where
+    E: HasSeaFields + Clone,
+    D: Dao,
+{
+    if requests.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // 获取第一个请求的字段结构来确定列名
+    let first_fields = requests[0].clone().not_none_sea_fields();
+    let (columns, _) = first_fields.for_sea_insert();
+
+    let mut query = Query::insert();
+    query.into_table(D::table_ref()).columns(columns);
+
+    // 为每个请求添加值
+    for req in requests {
+        let fields = req.not_none_sea_fields();
+        let (_, sea_values) = fields.for_sea_insert();
+        query.values(sea_values).change_context_lazy(|| {
+            Error::Message("failed to add batch upsert values".to_string())
+        })?;
+    }
+
+    // 添加 ON CONFLICT 处理
+    let on_conflict = if update_columns.is_empty() {
+        OnConflict::column(Alias::new(conflict_column))
+            .do_nothing()
+            .to_owned()
+    } else {
+        let mut on_conflict = OnConflict::column(Alias::new(conflict_column));
+        for &col in update_columns {
+            on_conflict = on_conflict.update_column(Alias::new(col)).to_owned();
+        }
+        on_conflict
+    };
+
+    query.on_conflict(on_conflict);
+    query.returning(Query::returning().columns([CommonIden::Id]));
+
+    let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
+    log::debug!("sql: {} values: {:?}", sql, values);
+
+    let sqlx_query = sqlx::query_as_with::<_, (i64,), _>(&sql, values);
+    let results = sqlx_query
+        .fetch_all(tx.as_mut())
+        .await
+        .change_context_lazy(|| Error::Message("failed to batch upsert records".to_string()))?;
+
+    let ids = results.into_iter().map(|(id,)| id).collect();
+    Ok(ids)
+}
+
 // 通用的按ID查询方法
 pub async fn dao_fetch_by_id<D, T>(tx: &mut Transaction<'_, Postgres>, id: i64) -> Result<T, Error>
 where

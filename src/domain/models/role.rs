@@ -1,3 +1,4 @@
+use modql::field::Fields;
 use nutype::nutype;
 use sea_query::{Nullable, Value};
 
@@ -24,7 +25,7 @@ pub struct CreateRoleRequest {
     pub menus: Vec<CreateRoleMenuRequest>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Fields)]
 pub struct CreateRoleMenuRequest {
     pub menu_id: i64,
     pub menu_name: MenuName,

@@ -11,8 +11,8 @@ use crate::{
 };
 
 use super::base::{
-    Dao, DaoQueryBuilder, dao_create, dao_fetch_by_column, dao_fetch_by_id,
-    dao_list_by_array_column, dao_upsert,
+    Dao, DaoQueryBuilder, dao_batch_insert, dao_batch_upsert, dao_create, dao_fetch_by_column,
+    dao_fetch_by_id, dao_list_by_array_column, dao_upsert,
 };
 
 pub struct AccountDao;
@@ -124,5 +124,45 @@ impl AccountDao {
         name: &AccountName,
     ) -> Result<Option<Account>, Error> {
         dao_fetch_by_column::<Self, Account>(tx, "name", name.as_ref()).await
+    }
+
+    // 批量创建账户
+    pub async fn batch_create_accounts(
+        tx: &mut Transaction<'_, Postgres>,
+        requests: Vec<CreateAccountRequest>,
+    ) -> Result<Vec<i64>, Error> {
+        // 对所有请求进行密码哈希处理
+        let mut processed_requests = Vec::new();
+        for req in requests {
+            let password = compute_password_hash(&req.password)?;
+            let processed_req =
+                req.with_password(AccountPassword::try_from(password).change_context_lazy(
+                    || Error::Message("failed to process password".to_string()),
+                )?);
+            processed_requests.push(processed_req);
+        }
+
+        dao_batch_insert::<Self, _>(tx, processed_requests).await
+    }
+
+    // 批量创建或更新账户
+    pub async fn batch_upsert_accounts(
+        tx: &mut Transaction<'_, Postgres>,
+        requests: Vec<CreateAccountRequest>,
+        conflict_column: &str,
+        update_columns: &[&str],
+    ) -> Result<Vec<i64>, Error> {
+        // 对所有请求进行密码哈希处理
+        let mut processed_requests = Vec::new();
+        for req in requests {
+            let password = compute_password_hash(&req.password)?;
+            let processed_req =
+                req.with_password(AccountPassword::try_from(password).change_context_lazy(
+                    || Error::Message("failed to process password".to_string()),
+                )?);
+            processed_requests.push(processed_req);
+        }
+
+        dao_batch_upsert::<Self, _>(tx, processed_requests, conflict_column, update_columns).await
     }
 }
