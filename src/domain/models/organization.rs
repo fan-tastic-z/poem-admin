@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use nutype::nutype;
+use sea_query::{Nullable, Value};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -49,6 +50,20 @@ impl CreateOrganizationRequest {
     )
 )]
 pub struct OrganizationName(String);
+
+// Implement From<OrganizationName> for sea_query::Value
+impl From<OrganizationName> for Value {
+    fn from(organization_name: OrganizationName) -> Self {
+        Value::String(Some(Box::new(organization_name.into_inner())))
+    }
+}
+
+// Implement Nullable for OrganizationName (needed for Option<OrganizationName>)
+impl Nullable for OrganizationName {
+    fn null() -> Value {
+        Value::String(None)
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct OrganizationTree {

@@ -1,5 +1,5 @@
 use error_stack::{Result, ResultExt};
-use sqlx::{FromRow, Postgres, QueryBuilder, Row, Transaction};
+use sqlx::{Postgres, Row, Transaction};
 
 use crate::{
     domain::models::{
@@ -9,139 +9,62 @@ use crate::{
     errors::Error,
 };
 
-use super::database::Db;
+use super::base::{Dao, DaoQueryBuilder, dao_fetch_by_column, dao_fetch_by_id};
 
-impl Db {
-    pub async fn fetch_role_by_id(
-        &self,
-        tx: &mut Transaction<'_, Postgres>,
-        id: i64,
-    ) -> Result<Role, Error> {
-        let role = sqlx::query_as::<_, Role>(
-            r#"
-            SELECT
-                id,
-                name,
-                description,
-                is_deletable,
-                created_by,
-                created_by_name
-            FROM
-                role
-            WHERE
-                id = $1
-        "#,
-        )
-        .bind(id)
-        .fetch_one(tx.as_mut())
-        .await
-        .change_context_lazy(|| Error::Message("failed to fetch role by id".to_string()))?;
-        Ok(role)
+pub struct RoleDao;
+
+impl Dao for RoleDao {
+    const TABLE: &'static str = "role";
+}
+
+impl RoleDao {
+    pub async fn fetch_by_id(tx: &mut Transaction<'_, Postgres>, id: i64) -> Result<Role, Error> {
+        dao_fetch_by_id::<Self, Role>(tx, id).await
     }
 
-    pub async fn filter_role_count(
-        &self,
+    pub async fn fetch_by_name(
+        tx: &mut Transaction<'_, Postgres>,
+        name: &str,
+    ) -> Result<Option<Role>, Error> {
+        dao_fetch_by_column::<Self, Role>(tx, "name", name).await
+    }
+
+    pub async fn filter_roles_count(
         tx: &mut Transaction<'_, Postgres>,
         name: Option<&RoleName>,
     ) -> Result<i64, Error> {
-        let mut query_builder = QueryBuilder::new(
-            r#"
-            SELECT COUNT(id) FROM role
-            "#,
-        );
+        let mut query_builder = DaoQueryBuilder::<Self>::new();
 
         if let Some(name) = name {
-            query_builder.push(" WHERE name LIKE ");
-            query_builder.push_bind(format!("%{}%", name.as_ref()));
+            query_builder = query_builder.and_where_like("name", name.as_ref());
         }
 
-        let count = query_builder
-            .build()
-            .fetch_one(tx.as_mut())
-            .await
-            .change_context_lazy(|| Error::Message("failed to filter role count".to_string()))?;
-        Ok(count.get::<i64, _>("count"))
+        query_builder.count(tx).await
     }
 
-    pub async fn filter_role(
-        &self,
+    pub async fn filter_roles(
         tx: &mut Transaction<'_, Postgres>,
         name: Option<&RoleName>,
         page_filter: &PageFilter,
     ) -> Result<Vec<Role>, Error> {
-        let page_no = page_filter.page_no().as_ref();
-        let page_size = page_filter.page_size().as_ref();
-
-        let offset = (page_no - 1) * page_size;
-
-        let mut query_builder = QueryBuilder::new(
-            r#"
-            SELECT
-                id,
-                name,
-                description,
-                created_by,
-                created_by_name,
-                is_deletable,
-                created_at,
-                updated_at,
-                deleted_at
-            FROM
-                role"#,
-        );
+        let mut query_builder = DaoQueryBuilder::<Self>::new();
 
         if let Some(name) = name {
-            query_builder.push(" WHERE name LIKE ");
-            query_builder.push_bind(format!("%{}%", name.as_ref()));
+            query_builder = query_builder.and_where_like("name", name.as_ref());
         }
-        query_builder.push(" ORDER BY id DESC");
 
-        query_builder.push(" LIMIT ");
-        query_builder.push_bind(page_size);
-        query_builder.push(" OFFSET ");
-        query_builder.push_bind(offset);
+        let page_no = *page_filter.page_no().as_ref();
+        let page_size = *page_filter.page_size().as_ref();
+        let offset = (page_no - 1) * page_size;
 
-        let roles = query_builder
-            .build()
-            .try_map(|row| Role::from_row(&row))
-            .fetch_all(tx.as_mut())
+        query_builder
+            .order_by_desc("id")
+            .limit_offset(page_size as i64, offset as i64)
+            .fetch_all(tx)
             .await
-            .change_context_lazy(|| Error::Message("failed to filter roles".to_string()))?;
-
-        Ok(roles)
-    }
-
-    pub async fn filter_role_by_name(
-        &self,
-        tx: &mut Transaction<'_, Postgres>,
-        name: &str,
-    ) -> Result<Option<Role>, Error> {
-        let res = sqlx::query_as::<_, Role>(
-            r#"
-        SELECT
-            id,
-            name,
-            description,
-            created_by,
-            created_by_name,
-            is_deletable,
-            created_at,
-            updated_at,
-            deleted_at
-        FROM
-            role
-        WHERE
-            name = $1"#,
-        )
-        .bind(name)
-        .fetch_optional(tx.as_mut())
-        .await
-        .change_context_lazy(|| Error::Message("failed to fetch role by name".to_string()))?;
-        Ok(res)
     }
 
     pub async fn save_role(
-        &self,
         tx: &mut Transaction<'_, Postgres>,
         req: &CreateRoleRequest,
         current_user_id: i64,

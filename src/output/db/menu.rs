@@ -1,34 +1,22 @@
 use error_stack::Result;
 use sqlx::{Postgres, Transaction};
 
-use crate::domain::models::menu::Menu;
+use crate::{domain::models::menu::Menu, errors::Error};
 
-use super::database::Db;
+use super::base::{Dao, DaoQueryBuilder};
 
-impl Db {
-    pub async fn list_menu(
-        &self,
-        tx: &mut Transaction<'_, Postgres>,
-    ) -> Result<Vec<Menu>, sqlx::Error> {
-        let rows = sqlx::query_as::<_, Menu>(
-            r#"
-        SELECT
-            id,
-            name,
-            parent_id,
-            parent_name,
-            order_index,
-            created_at,
-            updated_at,
-            deleted_at
-        FROM
-            menu
-        ORDER BY
-            order_index
-        "#,
-        )
-        .fetch_all(tx.as_mut())
-        .await?;
-        Ok(rows)
+pub struct MenuDao;
+
+impl Dao for MenuDao {
+    const TABLE: &'static str = "menu";
+}
+
+impl MenuDao {
+    pub async fn list_menu(tx: &mut Transaction<'_, Postgres>) -> Result<Vec<Menu>, Error> {
+        let query_builder = DaoQueryBuilder::<Self>::new();
+        query_builder
+            .order_by_desc("order_index")
+            .fetch_all(tx)
+            .await
     }
 }

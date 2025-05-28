@@ -1,47 +1,40 @@
-use sqlx::{Postgres, QueryBuilder, Transaction};
+use sqlx::{Postgres, Transaction};
 
-use crate::domain::models::{role::CreateRoleMenuRequest, role_menu::RoleMenu};
+use crate::{
+    domain::models::{role::CreateRoleMenuRequest, role_menu::RoleMenu},
+    errors::Error,
+};
+use error_stack::{Result, ResultExt};
 
-use super::database::Db;
+use super::base::{Dao, DaoQueryBuilder, dao_batch_insert};
 
-impl Db {
+pub struct RoleMenuDao;
+
+impl Dao for RoleMenuDao {
+    const TABLE: &'static str = "role_menu";
+}
+
+impl RoleMenuDao {
     pub async fn save_role_menus(
-        &self,
         tx: &mut Transaction<'_, Postgres>,
-        role_id: i64,
-        role_name: &str,
+        _role_id: i64,
+        _role_name: &str,
         req: &[CreateRoleMenuRequest],
-    ) -> Result<(), sqlx::Error> {
-        let mut query_builder = QueryBuilder::new(
-            r#"
-        INSERT INTO role_menu (role_id, role_name, menu_id, menu_name)
-        "#,
-        );
-        query_builder.push_values(req, |mut b, role_menu| {
-            b.push_bind(role_id)
-                .push_bind(role_name)
-                .push_bind(role_menu.menu_id)
-                .push_bind(role_menu.menu_name.as_ref());
-        });
-        query_builder.build().execute(tx.as_mut()).await?;
-        Ok(())
+    ) -> Result<Vec<i64>, Error> {
+        dao_batch_insert::<Self, _>(tx, req.to_vec()).await
     }
 
     pub async fn filter_role_menu_by_role_id(
-        &self,
         tx: &mut Transaction<'_, Postgres>,
         role_id: i64,
-    ) -> Result<Vec<RoleMenu>, sqlx::Error> {
-        let role_menus = sqlx::query_as::<_, RoleMenu>(
-            r#"
-            SELECT role_id, role_name, menu_id, menu_name
-            FROM role_menu
-            WHERE role_id = $1
-            "#,
-        )
-        .bind(role_id)
-        .fetch_all(tx.as_mut())
-        .await?;
+    ) -> Result<Vec<RoleMenu>, Error> {
+        let role_menus = DaoQueryBuilder::<Self>::new()
+            .and_where_eq("role_id", role_id)
+            .fetch_all(tx)
+            .await
+            .change_context_lazy(|| {
+                Error::Message("failed to filter role menu by role id".to_string())
+            })?;
         Ok(role_menus)
     }
 }

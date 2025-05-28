@@ -8,7 +8,59 @@ use crate::{
 use error_stack::{Result, ResultExt};
 use sqlx::{Postgres, QueryBuilder, Row, Transaction};
 
-use super::database::Db;
+use super::{
+    base::{Dao, DaoQueryBuilder, dao_create},
+    database::Db,
+};
+
+pub struct OperationLogDao;
+
+impl Dao for OperationLogDao {
+    const TABLE: &'static str = "operation_log";
+}
+
+impl OperationLogDao {
+    pub async fn filter_operation_log(
+        tx: &mut Transaction<'_, Postgres>,
+        page_filter: &PageFilter,
+        account_ids: &[i64],
+    ) -> Result<Vec<OperationLog>, Error> {
+        let operation_logs = DaoQueryBuilder::<Self>::new()
+            .and_where_in("account_id", account_ids)
+            .order_by_desc("id")
+            .limit_offset(
+                *page_filter.page_size().as_ref() as i64,
+                (*page_filter.page_no().as_ref() as i64 - 1)
+                    * *page_filter.page_size().as_ref() as i64,
+            )
+            .fetch_all(tx)
+            .await
+            .change_context_lazy(|| Error::Message("failed to filter operation log".to_string()))?;
+        Ok(operation_logs)
+    }
+
+    pub async fn filter_operation_log_count(
+        tx: &mut Transaction<'_, Postgres>,
+        account_ids: &[i64],
+    ) -> Result<i64, Error> {
+        let count = DaoQueryBuilder::<Self>::new()
+            .and_where_in("account_id", account_ids)
+            .count(tx)
+            .await
+            .change_context_lazy(|| {
+                Error::Message("failed to filter operation log count".to_string())
+            })?;
+        Ok(count)
+    }
+
+    pub async fn save_operation_log(
+        tx: &mut Transaction<'_, Postgres>,
+        req: CreateOperationLogRequest,
+    ) -> Result<i64, Error> {
+        let id = dao_create::<Self, _>(tx, req).await?;
+        Ok(id)
+    }
+}
 
 impl Db {
     pub async fn filter_operation_log(

@@ -67,7 +67,7 @@ pub trait SysService: Clone + Send + Sync + 'static {
 
     fn create_account(
         &self,
-        req: &CreateAccountRequest,
+        req: CreateAccountRequest,
         current_user_id: i64,
     ) -> impl Future<Output = Result<i64, Error>> + Send;
 
@@ -155,7 +155,7 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
 
     fn create_account(
         &self,
-        req: &CreateAccountRequest,
+        req: CreateAccountRequest,
     ) -> impl Future<Output = Result<i64, Error>> + Send;
 
     fn list_origanization_by_id(

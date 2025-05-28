@@ -1,4 +1,6 @@
+use modql::field::Fields;
 use nutype::nutype;
+use sea_query::{Nullable, Value};
 
 use super::{
     menu::{MenuName, MenuTree},
@@ -23,7 +25,7 @@ pub struct CreateRoleRequest {
     pub menus: Vec<CreateRoleMenuRequest>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Fields)]
 pub struct CreateRoleMenuRequest {
     pub menu_id: i64,
     pub menu_name: MenuName,
@@ -61,6 +63,18 @@ impl CreateRoleRequest {
 )]
 pub struct RoleName(String);
 
+impl From<RoleName> for Value {
+    fn from(role_name: RoleName) -> Self {
+        Value::String(Some(Box::new(role_name.into_inner())))
+    }
+}
+
+impl Nullable for RoleName {
+    fn null() -> Value {
+        Value::String(None)
+    }
+}
+
 #[nutype(
     sanitize(trim, lowercase),
     validate(len_char_min = 3, len_char_max = 20),
@@ -70,6 +84,18 @@ pub struct RoleName(String);
     )
 )]
 pub struct RoleDescription(String);
+
+impl From<RoleDescription> for Value {
+    fn from(role_description: RoleDescription) -> Self {
+        Value::String(Some(Box::new(role_description.into_inner())))
+    }
+}
+
+impl Nullable for RoleDescription {
+    fn null() -> Value {
+        Value::String(None)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ListRoleRequest {

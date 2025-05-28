@@ -1,6 +1,7 @@
 use super::{account::AccountName, page_utils::PageFilter};
 use crate::utils::ip_validator;
 use chrono::{DateTime, Utc};
+use modql::field::Fields;
 use nutype::nutype;
 use serde::Serialize;
 
@@ -75,7 +76,43 @@ impl std::fmt::Display for OperationType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+impl From<OperationType> for sea_query::Value {
+    fn from(value: OperationType) -> Self {
+        sea_query::Value::String(Some(Box::new(value.to_string())))
+    }
+}
+
+impl From<OperationResult> for sea_query::Value {
+    fn from(value: OperationResult) -> Self {
+        sea_query::Value::String(Some(Box::new(value.to_string())))
+    }
+}
+
+impl From<OperationLogIpAddress> for sea_query::Value {
+    fn from(value: OperationLogIpAddress) -> Self {
+        sea_query::Value::String(Some(Box::new(value.into_inner())))
+    }
+}
+
+impl From<OperationLogUserAgent> for sea_query::Value {
+    fn from(value: OperationLogUserAgent) -> Self {
+        sea_query::Value::String(Some(Box::new(value.into_inner())))
+    }
+}
+
+impl From<OperationLogModule> for sea_query::Value {
+    fn from(value: OperationLogModule) -> Self {
+        sea_query::Value::String(Some(Box::new(value.into_inner())))
+    }
+}
+
+impl From<OperationLogDescription> for sea_query::Value {
+    fn from(value: OperationLogDescription) -> Self {
+        sea_query::Value::String(Some(Box::new(value.into_inner())))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Fields)]
 pub struct CreateOperationLogRequest {
     pub account_id: i64,
     pub account_name: AccountName,

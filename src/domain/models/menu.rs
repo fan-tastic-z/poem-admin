@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use nutype::nutype;
+use sea_query::{Nullable, Value};
 use serde::Serialize;
 
 #[nutype(
@@ -12,6 +13,20 @@ use serde::Serialize;
     )
 )]
 pub struct MenuName(String);
+
+// Implement From<MenuName> for sea_query::Value
+impl From<MenuName> for Value {
+    fn from(menu_name: MenuName) -> Self {
+        Value::String(Some(Box::new(menu_name.into_inner())))
+    }
+}
+
+// Implement Nullable for MenuName (needed for Option<MenuName>)
+impl Nullable for MenuName {
+    fn null() -> Value {
+        Value::String(None)
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, sqlx::FromRow)]
 pub struct Menu {
