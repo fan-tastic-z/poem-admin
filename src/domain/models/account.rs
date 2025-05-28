@@ -1,5 +1,7 @@
 use email_address::EmailAddress;
+use modql::field::Fields;
 use nutype::nutype;
+use sea_query::{Nullable, Value};
 use serde::Serialize;
 
 use super::{
@@ -22,7 +24,7 @@ pub struct Account {
     pub is_authorized: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Fields)]
 pub struct CreateAccountRequest {
     pub name: AccountName,
     pub password: AccountPassword,
@@ -80,12 +82,40 @@ impl CreateAccountRequest {
 )]
 pub struct AccountName(String);
 
+// Implement From<AccountName> for sea_query::Value
+impl From<AccountName> for Value {
+    fn from(account_name: AccountName) -> Self {
+        Value::String(Some(Box::new(account_name.into_inner())))
+    }
+}
+
+// Implement Nullable for AccountName (needed for Option<AccountName>)
+impl Nullable for AccountName {
+    fn null() -> Value {
+        Value::String(None)
+    }
+}
+
 #[nutype(
     sanitize(trim, lowercase),
     validate(predicate = |email| email.is_empty() || EmailAddress::is_valid(email)),
     derive(Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash, AsRef, Deref, Borrow, TryFrom)
 )]
 pub struct AccountEmail(String);
+
+// Implement From<AccountEmail> for sea_query::Value
+impl From<AccountEmail> for Value {
+    fn from(account_email: AccountEmail) -> Self {
+        Value::String(Some(Box::new(account_email.into_inner())))
+    }
+}
+
+// Implement Nullable for AccountEmail (needed for Option<AccountEmail>)
+impl Nullable for AccountEmail {
+    fn null() -> Value {
+        Value::String(None)
+    }
+}
 
 #[nutype(
     sanitize(trim),
@@ -95,6 +125,20 @@ pub struct AccountEmail(String);
     )
 )]
 pub struct AccountPassword(String);
+
+// Implement From<AccountPassword> for sea_query::Value
+impl From<AccountPassword> for Value {
+    fn from(account_password: AccountPassword) -> Self {
+        Value::String(Some(Box::new(account_password.into_inner())))
+    }
+}
+
+// Implement Nullable for AccountPassword (needed for Option<AccountPassword>)
+impl Nullable for AccountPassword {
+    fn null() -> Value {
+        Value::String(None)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CurrentAccountResponseData {

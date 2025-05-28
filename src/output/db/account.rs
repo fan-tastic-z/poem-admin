@@ -1,4 +1,7 @@
 use error_stack::{Result, ResultExt};
+use modql::field::HasSeaFields;
+use sea_query::{PostgresQueryBuilder, Query};
+use sea_query_binder::SqlxBinder;
 use sqlx::{Postgres, QueryBuilder, Row, Transaction};
 
 use crate::{
@@ -7,10 +10,42 @@ use crate::{
         page_utils::PageFilter,
     },
     errors::Error,
+    output::db::base::CommonIden,
     utils::password_hash::compute_password_hash,
 };
 
-use super::database::Db;
+use super::{base::Dao, database::Db};
+
+pub struct AccountDao;
+
+impl Dao for AccountDao {
+    const TABLE: &'static str = "account";
+}
+
+impl AccountDao {
+    pub async fn create_account<E>(tx: &mut Transaction<'_, Postgres>, req: E) -> Result<i64, Error>
+    where
+        E: HasSeaFields,
+    {
+        let fields = req.not_none_sea_fields();
+        let (columns, sea_values) = fields.for_sea_insert();
+        let mut query = Query::insert();
+        query
+            .into_table(Self::table_ref())
+            .columns(columns)
+            .values(sea_values)
+            .change_context_lazy(|| Error::Message("failed to create account".to_string()))?
+            .returning(Query::returning().columns([CommonIden::Id]));
+        let (sql, values) = query.build_sqlx(PostgresQueryBuilder);
+        log::info!("sql: {} values: {:?}", sql, values);
+        let sqlx_query = sqlx::query_as_with::<_, (i64,), _>(&sql, values);
+        let (id,) = sqlx_query
+            .fetch_one(tx.as_mut())
+            .await
+            .change_context_lazy(|| Error::Message("failed to create account".to_string()))?;
+        Ok(id)
+    }
+}
 
 impl Db {
     pub async fn list_account_by_organization_ids(

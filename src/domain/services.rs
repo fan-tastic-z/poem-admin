@@ -260,7 +260,7 @@ where
 
     async fn create_account(
         &self,
-        req: &CreateAccountRequest,
+        req: CreateAccountRequest,
         current_user_id: i64,
     ) -> Result<i64, Error> {
         self.repo

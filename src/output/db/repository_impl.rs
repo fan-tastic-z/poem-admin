@@ -19,7 +19,7 @@ use crate::{
     utils::password_hash::verify_password_hash,
 };
 
-use super::database::Db;
+use super::{account::AccountDao, database::Db};
 impl SysRepository for Db {
     async fn list_self_and_sub_ogranization_account_ids(
         &self,
@@ -319,11 +319,12 @@ impl SysRepository for Db {
         }
     }
 
-    async fn create_account(&self, req: &CreateAccountRequest) -> Result<i64, Error> {
+    async fn create_account(&self, req: CreateAccountRequest) -> Result<i64, Error> {
         let mut tx =
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
+        let role_id = req.role_id;
         if self
             .filter_account_by_name(&mut tx, &req.name)
             .await?
@@ -331,9 +332,9 @@ impl SysRepository for Db {
         {
             return Err(Error::BadRequest("account already exists".to_string()).into());
         }
-        let id = self.save_account(&mut tx, req).await?;
+        let id = AccountDao::create_account(&mut tx, req).await?;
         self.enforcer
-            .add_role_for_user(&id.to_string(), &req.role_id.to_string())
+            .add_role_for_user(&id.to_string(), &role_id.to_string())
             .await
             .change_context_lazy(|| Error::Message("failed to add casbin role".to_string()))?;
         tx.commit()

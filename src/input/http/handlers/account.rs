@@ -116,7 +116,7 @@ pub async fn create_account<S: SysService + Send + Sync + 'static>(
     let req = body.try_into_domain()?;
     state
         .sys_service
-        .create_account(&req, extension_data.user_id)
+        .create_account(req, extension_data.user_id)
         .await
         .map_err(ApiError::from)
         .map(|id| ApiSuccess::new(StatusCode::CREATED, CreateAccountHttpResponseData { id }))

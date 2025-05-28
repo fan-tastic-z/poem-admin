@@ -1,4 +1,5 @@
 pub mod account;
+pub mod base;
 pub mod database;
 pub mod menu;
 pub mod operation_log;
