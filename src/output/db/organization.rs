@@ -1,102 +1,69 @@
 use error_stack::{Result, ResultExt};
-use sqlx::{Postgres, Row, Transaction};
+use sqlx::{Postgres, Transaction};
 
 use crate::{
-    domain::models::organization::{CreateOrganizationRequest, Organization, OrganizationName},
+    domain::models::{
+        organization::{CreateOrganizationRequest, Organization, OrganizationName},
+        page_utils::PageFilter,
+    },
     errors::Error,
 };
 
-use super::database::Db;
+use super::base::{
+    Dao, DaoQueryBuilder, dao_create, dao_fetch_all, dao_fetch_by_column, dao_fetch_by_id,
+};
 
-impl Db {
-    pub async fn fetch_organization_by_id(
-        &self,
+pub struct OrganizationDao;
+
+impl Dao for OrganizationDao {
+    const TABLE: &'static str = "organization";
+}
+
+impl OrganizationDao {
+    pub async fn fetch_by_id(
         tx: &mut Transaction<'_, Postgres>,
         id: i64,
     ) -> Result<Organization, Error> {
-        let res = sqlx::query_as::<_, Organization>(
-            r#"
-            SELECT
-                id,
-                name,
-                parent_id,
-                parent_name
-            FROM organization
-            WHERE id = $1
-            "#,
-        )
-        .bind(id)
-        .fetch_one(tx.as_mut())
-        .await
-        .change_context_lazy(|| Error::Message("failed to get organization by id".to_string()))?;
-        Ok(res)
+        dao_fetch_by_id::<Self, _>(tx, id).await
     }
 
     pub async fn all_organizations(
-        &self,
         tx: &mut Transaction<'_, Postgres>,
     ) -> Result<Vec<Organization>, Error> {
-        let res = sqlx::query_as(
-            r#"
-        SELECT
-            id,
-            name,
-            parent_id,
-            parent_name
-        FROM organization"#,
-        )
-        .fetch_all(tx.as_mut())
-        .await
-        .change_context_lazy(|| Error::Message("failed to all organizations".to_string()))?;
-        Ok(res)
+        dao_fetch_all::<Self, _>(tx).await
     }
 
     pub async fn save_organization(
-        &self,
         tx: &mut Transaction<'_, Postgres>,
-        req: &CreateOrganizationRequest,
+        req: CreateOrganizationRequest,
     ) -> Result<i64, Error> {
-        let res = sqlx::query(
-            r#"
-        INSERT INTO
-            organization
-                (name, parent_id, parent_name)
-        VALUES
-            ($1, $2, $3)
-        RETURNING id
-        "#,
-        )
-        .bind(req.name.as_ref())
-        .bind(req.parent_id)
-        .bind(req.parent_name.as_ref().map(|n| n.as_ref()).unwrap_or(""))
-        .fetch_one(tx.as_mut())
-        .await
-        .change_context_lazy(|| Error::Message("failed to save organization".to_string()))?;
-
-        let id = res.get::<i64, _>("id");
+        let id = dao_create::<Self, _>(tx, req).await?;
         Ok(id)
     }
 
     pub async fn fetch_organization_by_name(
-        &self,
         tx: &mut Transaction<'_, Postgres>,
         name: &OrganizationName,
     ) -> Result<Option<Organization>, Error> {
-        let res = sqlx::query_as::<_, Organization>(
-            r#"
-        SELECT
-            id,
-            name,
-            parent_id,
-            parent_name
-        FROM organization WHERE name = $1"#,
-        )
-        .bind(name.as_ref())
-        .fetch_optional(tx.as_mut())
-        .await
-        .change_context_lazy(|| {
-            Error::Message("failed to fetch organization by name".to_string())
-        })?;
-        Ok(res)
+        dao_fetch_by_column::<Self, _>(tx, "name", name).await
+    }
+
+    pub async fn filter_organizations(
+        tx: &mut Transaction<'_, Postgres>,
+        name: &str,
+        page_filter: &PageFilter,
+    ) -> Result<Vec<Organization>, Error> {
+        let organizations = DaoQueryBuilder::<Self>::new()
+            .and_where_like("name", name)
+            .order_by_desc("id")
+            .limit_offset(
+                *page_filter.page_size().as_ref() as i64,
+                (*page_filter.page_no().as_ref() as i64 - 1)
+                    * *page_filter.page_size().as_ref() as i64,
+            )
+            .fetch_all(tx)
+            .await
+            .change_context_lazy(|| Error::Message("failed to filter organizations".to_string()))?;
+        Ok(organizations)
     }
 }

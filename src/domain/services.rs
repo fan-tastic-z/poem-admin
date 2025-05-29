@@ -253,7 +253,7 @@ where
         Ok(res)
     }
 
-    async fn create_organization(&self, req: &CreateOrganizationRequest) -> Result<i64, Error> {
+    async fn create_organization(&self, req: CreateOrganizationRequest) -> Result<i64, Error> {
         let res = self.repo.create_organization(req).await?;
         Ok(res)
     }

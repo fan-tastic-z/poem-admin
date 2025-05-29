@@ -220,6 +220,27 @@ where
     Ok(result)
 }
 
+// 通用的获取所有记录方法
+pub async fn dao_fetch_all<D, T>(tx: &mut Transaction<'_, Postgres>) -> Result<Vec<T>, Error>
+where
+    D: Dao,
+    T: for<'r> FromRow<'r, sqlx::postgres::PgRow> + Unpin + Send,
+{
+    let (sql, values) = Query::select()
+        .from(D::table_ref())
+        .columns([Alias::new("*")])
+        .build_sqlx(PostgresQueryBuilder);
+
+    log::debug!("sql: {} values: {:?}", sql, values);
+
+    let result = sqlx::query_as_with::<_, T, _>(&sql, values)
+        .fetch_all(tx.as_mut())
+        .await
+        .change_context_lazy(|| Error::Message("failed to fetch all records".to_string()))?;
+
+    Ok(result)
+}
+
 // 通用的按单个条件查询方法
 pub async fn dao_fetch_by_column<D, T>(
     tx: &mut Transaction<'_, Postgres>,

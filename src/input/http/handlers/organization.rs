@@ -73,7 +73,7 @@ pub async fn create_organization<S: SysService + Send + Sync + 'static>(
 
     state
         .sys_service
-        .create_organization(&request)
+        .create_organization(request)
         .await
         .map_err(ApiError::from)
         .map(|id| ApiSuccess::new(StatusCode::CREATED, CreaterganizationResponseData { id }))

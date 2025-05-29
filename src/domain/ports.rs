@@ -62,7 +62,7 @@ pub trait SysService: Clone + Send + Sync + 'static {
 
     fn create_organization(
         &self,
-        req: &CreateOrganizationRequest,
+        req: CreateOrganizationRequest,
     ) -> impl Future<Output = Result<i64, Error>> + Send;
 
     fn create_account(
@@ -150,7 +150,7 @@ pub trait SysRepository: Clone + Send + Sync + 'static {
 
     fn create_organization(
         &self,
-        req: &CreateOrganizationRequest,
+        req: CreateOrganizationRequest,
     ) -> impl Future<Output = Result<i64, Error>> + Send;
 
     fn create_account(

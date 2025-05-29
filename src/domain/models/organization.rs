@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use modql::field::Fields;
 use nutype::nutype;
 use sea_query::{Nullable, Value};
 use serde::{Deserialize, Serialize};
@@ -20,7 +21,7 @@ pub struct Organization {
     pub parent_name: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Fields)]
 pub struct CreateOrganizationRequest {
     pub name: OrganizationName,
     pub parent_id: i64,

@@ -20,8 +20,8 @@ use crate::{
 };
 
 use super::{
-    account::AccountDao, database::Db, menu::MenuDao, role::RoleDao, role_menu::RoleMenuDao,
-    route::RouteDao,
+    account::AccountDao, database::Db, menu::MenuDao, organization::OrganizationDao, role::RoleDao,
+    role_menu::RoleMenuDao, route::RouteDao,
 };
 
 impl SysRepository for Db {
@@ -36,7 +36,7 @@ impl SysRepository for Db {
             })?;
         let account = AccountDao::fetch_by_id(&mut tx, current_user_id).await?;
         let is_admin = account.id == 1;
-        let organizations = self.all_organizations(&mut tx).await?;
+        let organizations = OrganizationDao::all_organizations(&mut tx).await?;
         let organization_ids = self
             .list_origanization_by_id(account.organization_id, is_admin, limit_type, organizations)
             .await?;
@@ -130,7 +130,7 @@ impl SysRepository for Db {
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
-        let organizations = self.all_organizations(&mut tx).await?;
+        let organizations = OrganizationDao::all_organizations(&mut tx).await?;
         tx.commit()
             .await
             .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
@@ -154,7 +154,7 @@ impl SysRepository for Db {
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
-        let organization = self.fetch_organization_by_id(&mut tx, id).await?;
+        let organization = OrganizationDao::fetch_by_id(&mut tx, id).await?;
         tx.commit()
             .await
             .change_context_lazy(|| Error::Message("failed to commit transaction".to_string()))?;
@@ -259,7 +259,7 @@ impl SysRepository for Db {
             return Ok(());
         }
         let is_admin = account.id == 1;
-        let organizations = self.all_organizations(&mut tx).await?;
+        let organizations = OrganizationDao::all_organizations(&mut tx).await?;
         let organization_ids = self
             .list_origanization_by_id(target_organization_id, is_admin, limit_type, organizations)
             .await?;
@@ -340,22 +340,20 @@ impl SysRepository for Db {
         Ok(id)
     }
 
-    async fn create_organization(&self, req: &CreateOrganizationRequest) -> Result<i64, Error> {
+    async fn create_organization(&self, req: CreateOrganizationRequest) -> Result<i64, Error> {
         let mut tx =
             self.pool.begin().await.change_context_lazy(|| {
                 Error::Message("failed to begin transaction".to_string())
             })?;
 
-        if self
-            .fetch_organization_by_name(&mut tx, &req.name)
+        if OrganizationDao::fetch_organization_by_name(&mut tx, &req.name)
             .await?
             .is_some()
         {
             return Err(Error::BadRequest("organization already exists".to_string()).into());
         }
 
-        let id = self
-            .save_organization(&mut tx, req)
+        let id = OrganizationDao::save_organization(&mut tx, req)
             .await
             .change_context_lazy(|| Error::Message("failed to create organization".to_string()))?;
         tx.commit()
