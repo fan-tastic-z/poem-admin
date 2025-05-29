@@ -45,7 +45,7 @@ impl OrganizationDao {
         tx: &mut Transaction<'_, Postgres>,
         name: &OrganizationName,
     ) -> Result<Option<Organization>, Error> {
-        dao_fetch_by_column::<Self, _>(tx, "name", name).await
+        dao_fetch_by_column::<Self, _>(tx, "name", name.as_ref()).await
     }
 
     pub async fn filter_organizations(

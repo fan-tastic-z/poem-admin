@@ -1,7 +1,7 @@
 use error_stack::{Result, ResultExt};
 use modql::{SIden, field::HasSeaFields};
 use sea_query::{
-    Alias, Condition, Expr, Iden, IntoIden, OnConflict, PostgresQueryBuilder, Query,
+    Alias, Asterisk, Condition, Expr, Iden, IntoIden, OnConflict, PostgresQueryBuilder, Query,
     SelectStatement, TableRef,
 };
 use sea_query_binder::SqlxBinder;
@@ -206,7 +206,7 @@ where
 {
     let (sql, values) = Query::select()
         .from(D::table_ref())
-        .columns([Alias::new("*")])
+        .column(Asterisk)
         .and_where(Expr::col(CommonIden::Id).eq(id))
         .build_sqlx(PostgresQueryBuilder);
 
@@ -228,7 +228,7 @@ where
 {
     let (sql, values) = Query::select()
         .from(D::table_ref())
-        .columns([Alias::new("*")])
+        .column(Asterisk)
         .build_sqlx(PostgresQueryBuilder);
 
     log::debug!("sql: {} values: {:?}", sql, values);
@@ -253,7 +253,7 @@ where
 {
     let (sql, values) = Query::select()
         .from(D::table_ref())
-        .columns([Alias::new("*")])
+        .column(Asterisk)
         .and_where(Expr::col(Alias::new(column_name)).eq(value))
         .build_sqlx(PostgresQueryBuilder);
 
@@ -279,7 +279,7 @@ where
 {
     let (sql, query_values) = Query::select()
         .from(D::table_ref())
-        .columns([Alias::new("*")])
+        .column(Asterisk)
         .and_where(Expr::col(Alias::new(column_name)).is_in(values.iter().copied()))
         .build_sqlx(PostgresQueryBuilder);
 
@@ -311,7 +311,7 @@ impl<D: Dao> Default for DaoQueryBuilder<D> {
 impl<D: Dao> DaoQueryBuilder<D> {
     pub fn new() -> Self {
         let mut query = Query::select();
-        query.from(D::table_ref()).columns([Alias::new("*")]);
+        query.from(D::table_ref()).column(Asterisk);
 
         Self {
             query,
