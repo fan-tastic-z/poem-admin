@@ -1,0 +1,19 @@
+# 集成测试配置文件
+
+[server]
+listen_addr = "0.0.0.0:0"  # 随机端口
+advertise_addr = "127.0.0.1:9000"
+
+[auth.jwt]
+secret = "test_secret_key_for_integration_tests_only_do_not_use_in_production"
+expiration = 3600  # 1 hour for tests
+
+[database]
+host = "127.0.0.1"
+port = 5432  # 会被测试代码动态设置
+username = "postgres"
+password = "postgres"
+database_name = "postgres"
+
+[telemetry.logs.stderr]
+filter = "ERROR"  # 只输出错误日志，减少测试噪音
