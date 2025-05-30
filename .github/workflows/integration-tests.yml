@@ -1,0 +1,92 @@
+name: Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  integration-tests:
+    name: integration-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: true
+          key: integration-tests
+
+      - name: Install sqlx-cli for migrations
+        run: cargo install sqlx-cli --no-default-features --features postgres
+
+      - name: Check Docker availability
+        run: |
+          docker --version
+          docker info
+          docker ps
+
+      - name: Pull PostgreSQL Docker image
+        run: docker pull postgres:15
+
+      - name: Set up Docker permissions
+        run: |
+          sudo chmod 666 /var/run/docker.sock
+          docker ps
+
+      - name: Build project
+        run: cargo build --tests
+
+      - name: Run unit tests first
+        run: cargo nextest run --lib --bins
+
+      - name: Run business logic integration tests
+        run: cargo nextest run --test integration_tests --nocapture
+        env:
+          RUST_LOG: debug
+          # TestContainers configuration
+          TESTCONTAINERS_RYUK_DISABLED: true
+          TESTCONTAINERS_WAIT_TIMEOUT: 120
+          DOCKER_HOST: unix:///var/run/docker.sock
+
+      - name: Check API integration tests status
+        run: |
+          echo "ℹ️  API integration tests are marked as ignored (require HTTP server setup)"
+          echo "   They can be run manually with: cargo test --test api_integration_tests -- --ignored"
+          echo "   All business logic integration tests have completed successfully ✅"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker ps -a
+          docker stop $(docker ps -aq) || true
+          docker rm $(docker ps -aq) || true
