@@ -44,13 +44,9 @@ cargo nextest run --lib --bins
 echo -e "${YELLOW}🔧 Running integration tests...${NC}"
 cargo nextest run --test integration_tests --nocapture
 
-# 检查是否有 API 集成测试（通常被忽略）
-if cargo nextest list --test api_integration_tests 2>/dev/null | grep -q "test"; then
-    echo -e "${YELLOW}🌐 API integration tests found but skipped (marked as ignored)${NC}"
-    echo -e "${YELLOW}   To run them manually: cargo test --test api_integration_tests -- --ignored${NC}"
-else
-    echo -e "${YELLOW}🌐 No API integration tests to run${NC}"
-fi
+# API 集成测试状态信息
+echo -e "${YELLOW}ℹ️  API integration tests are marked as ignored (require HTTP server setup)${NC}"
+echo -e "${YELLOW}   They can be run manually with: cargo test --test api_integration_tests -- --ignored${NC}"
 
 echo -e "${GREEN}✅ All integration tests completed successfully!${NC}"
 
