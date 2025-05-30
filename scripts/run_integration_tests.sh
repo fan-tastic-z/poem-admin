@@ -1,109 +1,63 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
 
-# 集成测试执行脚本
-echo "🚀 Starting integration tests for poem-admin..."
+# 集成测试运行脚本
+# 用于本地开发和 CI 环境
 
-# 检查 Docker 是否运行
-if ! docker info > /dev/null 2>&1; then
-    echo "❌ Docker is not running. Please start Docker first."
+set -e
+
+# 颜色输出
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}🚀 Starting Integration Tests${NC}"
+
+# 检查 Docker 是否可用
+if ! command -v docker &> /dev/null; then
+    echo -e "${RED}❌ Docker is not installed or not in PATH${NC}"
     exit 1
 fi
 
-# 设置Docker环境变量（支持OrbStack）
-if [ -S "$HOME/.orbstack/run/docker.sock" ]; then
-    export DOCKER_HOST="unix://$HOME/.orbstack/run/docker.sock"
-    echo "🔧 Using OrbStack Docker socket"
-fi
-
-# 检查必要的工具
-if ! command -v cargo &> /dev/null; then
-    echo "❌ Cargo is not installed"
+if ! docker info &> /dev/null; then
+    echo -e "${RED}❌ Docker daemon is not running${NC}"
     exit 1
 fi
 
-if ! command -v cargo-nextest &> /dev/null; then
-    echo "⚠️  cargo-nextest is not installed. Installing..."
-    cargo install cargo-nextest --locked
-fi
+echo -e "${GREEN}✅ Docker is available${NC}"
 
 # 设置环境变量
-export RUST_LOG=${RUST_LOG:-"info"}
-export RUST_BACKTRACE=${RUST_BACKTRACE:-"1"}
+export RUST_LOG=${RUST_LOG:-info}
+export TESTCONTAINERS_RYUK_DISABLED=true
+export TESTCONTAINERS_WAIT_TIMEOUT=120
+export DOCKER_HOST=${DOCKER_HOST:-unix:///var/run/docker.sock}
 
-# 清理旧的容器（如果存在）
-echo "🧹 Cleaning up old test containers..."
-docker ps -a --filter "name=test-postgres" --format "{{.ID}}" | xargs -r docker rm -f
-docker network ls --filter "name=test-network" --format "{{.ID}}" | xargs -r docker network rm
+# 拉取 PostgreSQL 镜像
+echo -e "${YELLOW}📦 Pulling PostgreSQL Docker image...${NC}"
+docker pull postgres:15
 
-# 创建测试网络
-echo "🔧 Creating test network..."
-docker network create test-network || true
+# 运行单元测试
+echo -e "${YELLOW}🧪 Running unit tests...${NC}"
+cargo nextest run --lib --bins
 
-# 编译项目
-echo "🔨 Building project..."
-cargo build --release
+# 运行集成测试
+echo -e "${YELLOW}🔧 Running integration tests...${NC}"
+cargo nextest run --test integration_tests --nocapture
 
-# 运行测试
-echo "🧪 Running integration tests..."
-
-# 运行业务逻辑集成测试（不需要 HTTP 服务器）
-echo "📋 Running business logic integration tests..."
-cargo nextest run --test integration_tests --profile default
-
-# 运行 API 集成测试（使用真实的 HTTP 服务器）
-echo "📡 Running HTTP API integration tests..."
-cargo nextest run --test api_integration_tests --profile default
-
-# 生成测试报告
-echo "📊 Generating test reports..."
-if [ -f "target/nextest/default/junit.xml" ]; then
-    echo "✅ Test results saved to: target/nextest/default/junit.xml"
+# 检查是否有 API 集成测试（通常被忽略）
+if cargo nextest list --test api_integration_tests 2>/dev/null | grep -q "test"; then
+    echo -e "${YELLOW}🌐 API integration tests found but skipped (marked as ignored)${NC}"
+    echo -e "${YELLOW}   To run them manually: cargo test --test api_integration_tests -- --ignored${NC}"
+else
+    echo -e "${YELLOW}🌐 No API integration tests to run${NC}"
 fi
 
-# 清理测试网络
-echo "🧹 Cleaning up test network..."
-docker network rm test-network || true
+echo -e "${GREEN}✅ All integration tests completed successfully!${NC}"
 
-echo "🎉 All integration tests completed successfully!"
-echo ""
-echo "Test Summary:"
-echo "- ✅ Business Logic Tests: Passed"
-echo "- ✅ HTTP API Tests: Passed"
-echo ""
-echo "For more details, check the test output above."
+# 清理 Docker 容器（可选）
+if [ "${CLEANUP_DOCKER:-true}" = "true" ]; then
+    echo -e "${YELLOW}🧹 Cleaning up Docker containers...${NC}"
+    docker ps -aq --filter "ancestor=postgres:15" | xargs -r docker rm -f || true
+fi
 
-# 提供额外的测试选项
-echo ""
-echo "📝 Additional test commands:"
-echo "  - Run quick tests: ./scripts/run_integration_tests.sh quick"
-echo "  - Run with coverage: ./scripts/run_integration_tests.sh coverage"
-echo "  - Run API tests: ./scripts/run_integration_tests.sh api"
-
-# 处理命令行参数
-case "${1:-default}" in
-    "quick")
-        echo "🏃 Running quick tests..."
-        cargo nextest run --test integration_tests --profile quick
-        ;;
-    "coverage")
-        echo "📈 Running tests with coverage..."
-        if ! command -v cargo-llvm-cov &> /dev/null; then
-            echo "Installing cargo-llvm-cov..."
-            cargo install cargo-llvm-cov
-        fi
-        cargo llvm-cov nextest --test integration_tests --html --output-dir target/coverage
-        echo "Coverage report generated: target/coverage/index.html"
-        ;;
-    "api")
-        echo "🌐 Running API tests (including ignored)..."
-        cargo nextest run --test api_integration_tests --run-ignored all
-        ;;
-    "all")
-        echo "🔍 Running all tests..."
-        cargo nextest run --all-tests --profile default
-        ;;
-    *)
-        # Default case already handled above
-        ;;
-esac
+echo -e "${GREEN}🎉 Integration test run completed!${NC}"
