@@ -8,11 +8,11 @@ name = "poem-admin"
 path = "src/bin/server/main.rs"
 
 [dependencies]
-anstyle = "1.0.10"
+anstyle = "1.0.11"
 argon2 = { version = "0.5.3", features = ["std"] }
-build-data = "0.3.0"
+build-data = "0.3.3"
 chrono = { version = "0.4.41", features = ["serde"] }
-clap = { version = "4.5.38", features = ["derive"] }
+clap = { version = "4.5.40", features = ["derive"] }
 const_format = "0.2.34"
 ctrlc = "3.4.7"
 email_address = "0.2.9"
@@ -22,17 +22,12 @@ gix-discover = "0.40.1"
 jsonwebtoken = "9.3.1"
 local-ip-address = "0.6.5"
 log = "0.4.27"
-logforth = { version = "0.25.0", features = [
-    "colored",
-    "json",
-    "fastrace",
-    "rolling-file",
-] }
-mea = "0.3.7"
+logforth = { version = "0.26.1", features = ["colored", "layout-json", "append-fastrace", "append-rolling-file", "diagnostic-fastrace"] }
+mea = "0.3.10"
 modql = { version = "0.4.1", features = ["with-sea-query"] }
 nutype = { version = "0.6.1", features = ["serde"] }
 pin-project = "1.1.10"
-poem = "3.1.10"
+poem = "3.1.11"
 rand = { version = "0.9.1", features = ["std_rng"] }
 rust-embed = "8.7.2"
 sea-query = "0.32.6"
@@ -40,7 +35,7 @@ sea-query-binder = { version = "0.7.0", features = ["sqlx-postgres", "with-time"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 shadow-rs = "1.1.1"
-sqlx = { version = "0.8.5", features = [
+sqlx = { version = "0.8.6", features = [
     "postgres",
     "runtime-tokio",
     "macros",
@@ -50,8 +45,8 @@ sqlx = { version = "0.8.5", features = [
 ] }
 sqlx-adapter = { version = "1.7.0", features = ["postgres", "runtime-tokio"] }
 thiserror = "2.0.12"
-tokio = { version = "1.45.0", features = ["rt-multi-thread", "macros"] }
-toml_edit = { version = "0.22.26", features = ["serde"] }
+tokio = { version = "1.45.1", features = ["rt-multi-thread", "macros"] }
+toml_edit = { version = "0.22.27", features = ["serde"] }
 
 [build-dependencies]
 build-data = "0.3.0"
@@ -59,11 +54,11 @@ gix-discover = "0.40.1"
 shadow-rs = "1.1.1"
 
 [dev-dependencies]
-testcontainers = { version = "0.20", features = ["blocking"] }
-testcontainers-modules = { version = "0.8", features = ["postgres"] }
+testcontainers = { version = "0.24.0", features = ["blocking"] }
+testcontainers-modules = { version = "0.12.1", features = ["postgres"] }
 tokio-test = "0.4"
-reqwest = { version = "0.11", features = ["json"] }
-uuid = { version = "1.0", features = ["v4"] }
+reqwest = { version = "0.12.19", features = ["json"] }
+uuid = { version = "1.17.0", features = ["v4"] }
 async-trait = "0.1"
-tempfile = "3.0"
-criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+tempfile = "3.2.0"
+criterion = { version = "0.6.0", features = ["html_reports", "async_tokio"] }
