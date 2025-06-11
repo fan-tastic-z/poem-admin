@@ -202,7 +202,7 @@ async fn run_create_super_user(config: Config, password: String) -> Result<(), E
         0,
         RoleName::try_new("超级管理员").change_context_lazy(make_error)?,
     );
-    AccountDao::create_account(&mut tx, req).await?;
+    AccountDao::create_super_user(&mut tx, req).await?;
     tx.commit().await.change_context_lazy(make_error)?;
     log::info!("create super user success");
     Ok(())

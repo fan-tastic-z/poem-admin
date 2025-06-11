@@ -30,7 +30,7 @@ impl PageFilter {
 pub struct PageNo(i32);
 
 #[nutype(
-    validate(greater_or_equal = 10, less_or_equal = 1000),
+    validate(greater_or_equal = 1, less_or_equal = 200),
     derive(
         Clone, Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash, AsRef, Deref, Borrow, TryFrom,
         Serialize

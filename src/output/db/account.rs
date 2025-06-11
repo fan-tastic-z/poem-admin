@@ -39,11 +39,6 @@ impl AccountDao {
         tx: &mut Transaction<'_, Postgres>,
         req: CreateAccountRequest,
     ) -> Result<i64, Error> {
-        let password = compute_password_hash(&req.password)?;
-        let req = req.with_password(
-            AccountPassword::try_from(password)
-                .change_context_lazy(|| Error::Message("failed to create account".to_string()))?,
-        );
         let id = dao_upsert::<Self, _>(tx, req, "name", &["password"]).await?;
         Ok(id)
     }
