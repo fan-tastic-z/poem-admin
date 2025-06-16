@@ -30,11 +30,11 @@ pin-project = "1.1.10"
 poem = "3.1.11"
 rand = { version = "0.9.1", features = ["std_rng"] }
 rust-embed = "8.7.2"
-sea-query = "0.32.6"
-sea-query-binder = { version = "0.7.0", features = ["sqlx-postgres", "with-time"] }
+sea-query = { version = "0.32.6", features = ["postgres-array"] }
+sea-query-binder = { version = "0.7.0", features = ["postgres-array", "sqlx-postgres", "with-time"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
-shadow-rs = "1.1.1"
+shadow-rs = "1.2.0"
 sqlx = { version = "0.8.6", features = [
     "postgres",
     "runtime-tokio",

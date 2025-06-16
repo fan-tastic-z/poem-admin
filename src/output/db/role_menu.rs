@@ -1,7 +1,7 @@
 use sqlx::{Postgres, Transaction};
 
 use crate::{
-    domain::models::{role::CreateRoleMenuRequest, role_menu::RoleMenu},
+    domain::models::role_menu::{RoleMenu, SaveRoleMenuRequest},
     errors::Error,
 };
 use error_stack::{Result, ResultExt};
@@ -17,9 +17,7 @@ impl Dao for RoleMenuDao {
 impl RoleMenuDao {
     pub async fn save_role_menus(
         tx: &mut Transaction<'_, Postgres>,
-        _role_id: i64,
-        _role_name: &str,
-        req: &[CreateRoleMenuRequest],
+        req: &[SaveRoleMenuRequest],
     ) -> Result<Vec<i64>, Error> {
         dao_batch_insert::<Self, _>(tx, req.to_vec()).await
     }

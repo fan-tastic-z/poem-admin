@@ -10,7 +10,8 @@ use crate::{
             operation_log::{CreateOperationLogRequest, OperationLog},
             organization::{CreateOrganizationRequest, Organization, OrganizationLimitType},
             page_utils::PageFilter,
-            role::{CreateRoleRequest, ListRoleResponseData, Role, RoleName},
+            role::{CreateRoleRequest, ListRoleResponseData, Role, RoleName, SaveRoleRequest},
+            role_menu::SaveRoleMenuRequest,
             route::{RouteMethod, RoutePath},
         },
         ports::SysRepository,
@@ -402,12 +403,33 @@ impl SysRepository for Db {
             .change_context_lazy(|| {
                 Error::Message("failed to fetch current account".to_string())
             })?;
-        let id = RoleDao::save_role(&mut tx, req, current_user_id, &current_account.name)
-            .await
-            .change_context_lazy(|| Error::Message("failed to create role".to_string()))?;
+        let created_by_name = AccountName::try_from(current_account.name.clone())
+            .change_context_lazy(|| Error::Message("failed to convert account name".to_string()))?;
+        let id = RoleDao::save_role(
+            &mut tx,
+            SaveRoleRequest::new(
+                req.name.clone(),
+                req.description.clone(),
+                req.is_deletable,
+                current_user_id,
+                created_by_name,
+            ),
+        )
+        .await
+        .change_context_lazy(|| Error::Message("failed to create role".to_string()))?;
 
         // 批量保存角色菜单关系
-        RoleMenuDao::save_role_menus(&mut tx, id, req.name.as_ref(), req.menus.as_ref())
+        let role_menus = req
+            .menus
+            .iter()
+            .map(|m| SaveRoleMenuRequest {
+                role_id: id,
+                role_name: req.name.as_ref().to_string(),
+                menu_id: m.menu_id,
+                menu_name: m.menu_name.as_ref().to_string(),
+            })
+            .collect::<Vec<SaveRoleMenuRequest>>();
+        RoleMenuDao::save_role_menus(&mut tx, &role_menus)
             .await
             .change_context_lazy(|| Error::Message("failed to save role menus".to_string()))?;
 

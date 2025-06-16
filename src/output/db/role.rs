@@ -1,12 +1,13 @@
-use error_stack::{Result, ResultExt};
-use sqlx::{Postgres, Row, Transaction};
+use error_stack::Result;
+use sqlx::{Postgres, Transaction};
 
 use crate::{
     domain::models::{
         page_utils::PageFilter,
-        role::{CreateRoleRequest, Role, RoleName},
+        role::{Role, RoleName, SaveRoleRequest},
     },
     errors::Error,
+    output::db::base::dao_create,
 };
 
 use super::base::{Dao, DaoQueryBuilder, dao_fetch_by_column, dao_fetch_by_id};
@@ -66,29 +67,9 @@ impl RoleDao {
 
     pub async fn save_role(
         tx: &mut Transaction<'_, Postgres>,
-        req: &CreateRoleRequest,
-        current_user_id: i64,
-        current_user_name: &str,
+        req: SaveRoleRequest,
     ) -> Result<i64, Error> {
-        let res = sqlx::query(
-            r#"
-        INSERT INTO
-            role
-                (name, description, created_by, created_by_name, is_deletable)
-        VALUES
-            ($1, $2, $3, $4, $5)
-        RETURNING id
-        "#,
-        )
-        .bind(req.name.as_ref())
-        .bind(req.description.as_ref().map(|d| d.as_ref()))
-        .bind(current_user_id)
-        .bind(current_user_name)
-        .bind(req.is_deletable)
-        .fetch_one(tx.as_mut())
-        .await
-        .change_context_lazy(|| Error::Message("failed to save role".to_string()))?;
-        let id = res.get::<i64, _>("id");
+        let id = dao_create::<Self, _>(tx, req).await?;
         Ok(id)
     }
 }

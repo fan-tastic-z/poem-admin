@@ -2,6 +2,8 @@ use modql::field::Fields;
 use nutype::nutype;
 use sea_query::{Nullable, Value};
 
+use crate::domain::models::account::AccountName;
+
 use super::{
     menu::{MenuName, MenuTree},
     page_utils::PageFilter,
@@ -17,12 +19,39 @@ pub struct Role {
     pub is_deletable: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Fields)]
+pub struct SaveRoleRequest {
+    pub name: RoleName,
+    pub description: Option<RoleDescription>,
+    pub is_deletable: bool,
+    pub created_by: i64,
+    pub created_by_name: AccountName,
+}
+
+impl SaveRoleRequest {
+    pub fn new(
+        name: RoleName,
+        description: Option<RoleDescription>,
+        is_deletable: bool,
+        created_by: i64,
+        created_by_name: AccountName,
+    ) -> Self {
+        Self {
+            name,
+            description,
+            is_deletable,
+            created_by,
+            created_by_name,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Fields)]
 pub struct CreateRoleRequest {
     pub name: RoleName,
     pub description: Option<RoleDescription>,
     pub is_deletable: bool,
-    pub menus: Vec<CreateRoleMenuRequest>,
+    pub menus: RoleMenuList,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Fields)]
@@ -37,18 +66,58 @@ impl CreateRoleMenuRequest {
     }
 }
 
+impl From<CreateRoleMenuRequest> for Value {
+    fn from(menu: CreateRoleMenuRequest) -> Self {
+        Value::String(Some(Box::new(format!(
+            "{}:{}",
+            menu.menu_id, menu.menu_name
+        ))))
+    }
+}
+
+// Create a wrapper type to implement From trait
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RoleMenuList(pub Vec<CreateRoleMenuRequest>);
+
+impl From<Vec<CreateRoleMenuRequest>> for RoleMenuList {
+    fn from(menus: Vec<CreateRoleMenuRequest>) -> Self {
+        Self(menus)
+    }
+}
+
+impl AsRef<[CreateRoleMenuRequest]> for RoleMenuList {
+    fn as_ref(&self) -> &[CreateRoleMenuRequest] {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for RoleMenuList {
+    type Target = Vec<CreateRoleMenuRequest>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl From<RoleMenuList> for Value {
+    fn from(menus: RoleMenuList) -> Self {
+        let menu_values: Vec<Value> = menus.0.into_iter().map(Value::from).collect();
+        Value::Array(sea_query::ArrayType::String, Some(Box::new(menu_values)))
+    }
+}
+
 impl CreateRoleRequest {
     pub fn new(
         name: RoleName,
         description: Option<RoleDescription>,
         is_deletable: bool,
-        menus: Vec<CreateRoleMenuRequest>,
+        menus: impl Into<RoleMenuList>,
     ) -> Self {
         Self {
             name,
             description,
             is_deletable,
-            menus,
+            menus: menus.into(),
         }
     }
 }
